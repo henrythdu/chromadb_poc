@@ -1,6 +1,7 @@
 """ChromaDB Cloud connection and store management."""
 
 import logging
+import os
 
 try:
     import chromadb
@@ -13,33 +14,55 @@ logger = logging.getLogger(__name__)
 class ChromaStore:
     """Manage ChromaDB Cloud connection and collection operations."""
 
-    def __init__(self, host: str, api_key: str, collection_name: str):
-        """Initialize ChromaDB client.
+    def __init__(
+        self,
+        api_key: str | None = None,
+        tenant: str | None = None,
+        database: str | None = None,
+        collection_name: str = "papers",
+    ):
+        """Initialize ChromaDB Cloud client.
 
         Args:
-            host: ChromaDB Cloud host URL
-            api_key: ChromaDB API key for authentication
+            api_key: ChromaDB Cloud API key (defaults to CHROMA_CLOUD_API_KEY env var)
+            tenant: ChromaDB tenant ID (defaults to CHROMA_TENANT env var)
+            database: ChromaDB database name (defaults to CHROMA_DATABASE env var)
             collection_name: Name of the collection to use
 
         Raises:
             ImportError: If chromadb is not installed
+            ValueError: If required credentials are not provided
         """
         if chromadb is None:
             raise ImportError(
                 "chromadb is not installed. Install it with: pip install chromadb"
             )
 
-        self.host = host
-        self.api_key = api_key
+        # Load credentials from parameters or environment variables
+        self.api_key = api_key or os.getenv("CHROMA_CLOUD_API_KEY")
+        self.tenant = tenant or os.getenv("CHROMA_TENANT")
+        self.database = database or os.getenv("CHROMA_DATABASE")
         self.collection_name = collection_name
 
-        # Initialize ChromaDB client with authentication
-        self.client = chromadb.HttpClient(
-            host=host,
-            headers={"X-Chroma-Token": api_key},
+        # Validate required credentials
+        if not all([self.api_key, self.tenant, self.database]):
+            raise ValueError(
+                "ChromaDB credentials not found. "
+                "Set CHROMA_CLOUD_API_KEY, CHROMA_TENANT, and CHROMA_DATABASE "
+                "environment variables, or pass them as parameters."
+            )
+
+        # Initialize ChromaDB Cloud client
+        self.client = chromadb.CloudClient(
+            api_key=self.api_key,
+            tenant=self.tenant,
+            database=self.database,
         )
 
-        logger.info(f"Initialized ChromaDB client for {host}")
+        logger.info(
+            f"Initialized ChromaDB Cloud client for tenant={self.tenant}, "
+            f"database={self.database}"
+        )
 
     def _get_or_create_collection(self):
         """Get existing collection or create new one.

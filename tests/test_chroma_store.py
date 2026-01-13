@@ -1,5 +1,6 @@
 """Tests for Chroma Store module."""
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,15 +34,17 @@ def test_chroma_initialization():
 
         # Create store with test parameters
         store = ChromaStore(
-            host="http://test-chroma.com",
             api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
             collection_name="test_collection",
         )
 
         # Verify client was initialized with correct parameters
         mock_client.assert_called_once_with(
-            host="http://test-chroma.com",
-            headers={"X-Chroma-Token": "test_key"},
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
         )
 
         # Verify store attributes
@@ -201,19 +204,19 @@ def test_connection():
 def test_chroma_connection(mock_api_keys):
     """Integration test for real Chroma Cloud connection.
 
-    This test requires valid CHROMA_HOST and CHROMA_API_KEY environment variables.
+    This test requires valid CHROMA_CLOUD_API_KEY, CHROMA_TENANT,
+    and CHROMA_DATABASE environment variables.
     Marked as integration test - can be skipped with: pytest -m "not integration"
     """
     from src.ingestion.chroma_store import ChromaStore
 
-    # Skip if no real credentials
-    if "test" in mock_api_keys["chroma"]["host"]:
-        pytest.skip("Skipping integration test with mock credentials")
+    # Skip if no real credentials (mock_api_keys is just a placeholder)
+    api_key = os.getenv("CHROMA_CLOUD_API_KEY", "")
+    if not api_key or "test" in api_key.lower():
+        pytest.skip("Skipping integration test - no real credentials")
 
-    # Create store with real credentials
+    # Create store with real credentials from environment
     store = ChromaStore(
-        host=mock_api_keys["chroma"]["host"],
-        api_key=mock_api_keys["chroma"]["key"],
         collection_name="test_collection",
     )
 
