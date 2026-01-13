@@ -8,8 +8,9 @@ class Settings(BaseSettings):
 
     # API Keys (required)
     llamaparse_api_key: str
-    chroma_host: str
-    chroma_api_key: str
+    chroma_cloud_api_key: str
+    chroma_tenant: str
+    chroma_database: str
     openrouter_api_key: str
     cohere_api_key: str
 
