@@ -27,3 +27,34 @@ def test_indexer_initialization(mock_cloud_client):
     assert indexer is not None
     assert indexer.chunker.chunk_size == 800
     assert indexer.chunker.chunk_overlap == 100
+
+
+@patch("src.ingestion.chroma_store.chromadb.CloudClient")
+def test_index_batch_missing_file_path(mock_cloud_client):
+    """Test index_batch handles missing file_path gracefully."""
+    from src.ingestion.indexer import IngestionIndexer
+
+    mock_client_instance = MagicMock()
+    mock_cloud_client.return_value = mock_client_instance
+
+    indexer = IngestionIndexer(
+        llamaparse_api_key="test_key",
+        chroma_api_key="test_chroma_key",
+        chroma_tenant="test-tenant",
+        chroma_database="test-db",
+    )
+
+    # Paper without file_path - should be skipped
+    papers = [
+        {
+            "arxiv_id": "2301.07041",
+            "title": "Test Paper",
+            "authors": ["Author One"],
+            # Note: no file_path
+        }
+    ]
+
+    results = indexer.index_batch(papers)
+
+    assert results["failed"] == 1
+    assert results["success"] == 0

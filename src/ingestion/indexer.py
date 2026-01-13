@@ -121,6 +121,12 @@ class IngestionIndexer:
             pdf_path = paper.get("file_path")
             metadata = {k: v for k, v in paper.items() if k != "file_path"}
 
+            # Validate pdf_path exists
+            if pdf_path is None:
+                logger.error(f"Missing file_path for paper {metadata.get('arxiv_id', 'unknown')}")
+                results["failed"] += 1
+                continue
+
             result = self.index_paper(pdf_path, metadata)
 
             if result["status"] == "success":

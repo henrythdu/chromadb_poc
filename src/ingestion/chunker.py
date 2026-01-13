@@ -73,7 +73,7 @@ class DocumentChunker:
     def enrich_metadata(
         self,
         chunk: Dict[str, Any],
-        page_number: int = None,
+        page_number: int | None = None,
     ) -> Dict[str, Any]:
         """Enrich chunk metadata with additional fields.
 
