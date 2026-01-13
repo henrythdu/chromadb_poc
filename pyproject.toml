@@ -16,6 +16,9 @@ ignore = ["E501"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests (may require network access)"
+]
 
 [tool.coverage.run]
 source = ["src"]
