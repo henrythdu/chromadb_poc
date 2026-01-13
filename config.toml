@@ -1,0 +1,15 @@
+[models]
+llm = "anthropic/claude-3.5-sonnet"
+embedding = "BAAI/bge-large-en-v1.5"
+embedding_provider = "openrouter"
+
+[pipeline]
+max_papers = 200
+chunk_size = 800
+chunk_overlap = 100
+top_k_retrieve = 50
+top_k_rerank = 5
+
+[paths]
+pdf_dir = "./ml_pdfs"
+log_dir = "./logs"
