@@ -3,6 +3,7 @@
 import logging
 import time
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,10 +26,11 @@ class LlamaParserWrapper:
         self.api_key = api_key
         self.result_type = result_type
         self._client: Any = None
+        self._client_lock = Lock()  # Thread-safe client initialization
         logger.info(f"Initialized LlamaParserWrapper with result_type={result_type}")
 
     def _get_client(self) -> Any:
-        """Lazy load the LlamaParse client.
+        """Lazy load the LlamaParse client (thread-safe).
 
         Returns:
             LlamaParse client instance
@@ -37,18 +39,21 @@ class LlamaParserWrapper:
             ImportError: If llama_parse is not installed
         """
         if self._client is None:
-            try:
-                from llama_parse import LlamaParse
+            with self._client_lock:
+                # Double-check inside the lock to prevent re-initialization
+                if self._client is None:
+                    try:
+                        from llama_parse import LlamaParse
 
-                self._client = LlamaParse(
-                    api_key=self.api_key,
-                    result_type=self.result_type,
-                    verbose=True,
-                )
-                logger.info("LlamaParse client initialized successfully")
-            except ImportError as e:
-                logger.error(f"Failed to import llama_parse: {e}")
-                raise
+                        self._client = LlamaParse(
+                            api_key=self.api_key,
+                            result_type=self.result_type,
+                            verbose=True,
+                        )
+                        logger.info("LlamaParse client initialized successfully")
+                    except ImportError as e:
+                        logger.error(f"Failed to import llama_parse: {e}")
+                        raise
         return self._client
 
     def parse_pdf(
@@ -86,6 +91,11 @@ class LlamaParserWrapper:
         last_error = None
         for attempt in range(max_retries):
             try:
+                # Simple throttle to avoid hitting API limits too fast
+                # (More sophisticated rate limiter could be used in production)
+                if attempt == 0:
+                    time.sleep(0.5)  # 500ms delay before each API call
+
                 logger.info(
                     f"Parsing PDF {pdf_path} (attempt {attempt + 1}/{max_retries})"
                 )

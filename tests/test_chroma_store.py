@@ -47,12 +47,10 @@ def test_chroma_initialization():
             database="test_database",
         )
 
-        # Verify store attributes
+        # Verify store attributes (credentials NOT stored for security)
         assert store.collection_name == "test_collection"
-        assert store.api_key == "test_key"
-        assert store.tenant == "test-tenant"
-        assert store.database == "test_database"
         assert store.client == mock_instance
+        # Note: api_key, tenant, database are deliberately NOT stored as instance attributes
 
 
 def test_get_or_create_collection():

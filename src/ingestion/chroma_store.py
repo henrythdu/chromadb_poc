@@ -43,21 +43,18 @@ class ChromaStore:
                 "ChromaDB credentials must be provided as parameters."
             )
 
-        self.api_key = api_key
-        self.tenant = tenant
-        self.database = database
         self.collection_name = collection_name
 
-        # Initialize ChromaDB Cloud client
+        # Initialize ChromaDB Cloud client (credentials not stored after use)
         self.client = chromadb.CloudClient(
-            api_key=self.api_key,
-            tenant=self.tenant,
-            database=self.database,
+            api_key=api_key,
+            tenant=tenant,
+            database=database,
         )
 
         logger.info(
-            f"Initialized ChromaDB Cloud client for tenant={self.tenant}, "
-            f"database={self.database}"
+            f"Initialized ChromaDB Cloud client for tenant={tenant}, "
+            f"database={database}"
         )
 
     def _get_or_create_collection(self):

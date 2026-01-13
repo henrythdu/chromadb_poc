@@ -81,10 +81,7 @@ class IngestionIndexer:
         chunks = self.chunker.chunk_markdown(markdown, doc_metadata)
 
         # Step 4: Enrich chunks with metadata
-        enriched_chunks = []
-        for chunk in chunks:
-            enriched = self.chunker.enrich_metadata(chunk)
-            enriched_chunks.append(enriched)
+        enriched_chunks = [self.chunker.enrich_metadata(chunk) for chunk in chunks]
 
         # Step 5: Store in Chroma
         documents = [c["text"] for c in enriched_chunks]
@@ -165,17 +162,6 @@ class IngestionIndexer:
             """Process a single paper, returns result dict."""
             pdf_path = paper.get("file_path")
             metadata = {k: v for k, v in paper.items() if k != "file_path"}
-
-            # Validate pdf_path exists
-            if pdf_path is None:
-                logger.error(f"Missing file_path for paper {metadata.get('arxiv_id', 'unknown')}")
-                return {
-                    "status": "error",
-                    "error": "Missing file_path",
-                    "chunks_indexed": 0,
-                    "arxiv_id": metadata.get("arxiv_id", "unknown"),
-                }
-
             return self.index_paper(pdf_path, metadata)
 
         # Filter out papers without file_path first
