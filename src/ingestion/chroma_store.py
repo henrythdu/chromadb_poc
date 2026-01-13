@@ -1,7 +1,6 @@
 """ChromaDB Cloud connection and store management."""
 
 import logging
-import os
 
 try:
     import chromadb
@@ -16,17 +15,17 @@ class ChromaStore:
 
     def __init__(
         self,
-        api_key: str | None = None,
-        tenant: str | None = None,
-        database: str | None = None,
+        api_key: str,
+        tenant: str,
+        database: str,
         collection_name: str = "papers",
     ):
         """Initialize ChromaDB Cloud client.
 
         Args:
-            api_key: ChromaDB Cloud API key (defaults to CHROMA_CLOUD_API_KEY env var)
-            tenant: ChromaDB tenant ID (defaults to CHROMA_TENANT env var)
-            database: ChromaDB database name (defaults to CHROMA_DATABASE env var)
+            api_key: ChromaDB Cloud API key (required)
+            tenant: ChromaDB tenant ID (required)
+            database: ChromaDB database name (required)
             collection_name: Name of the collection to use
 
         Raises:
@@ -38,19 +37,16 @@ class ChromaStore:
                 "chromadb is not installed. Install it with: pip install chromadb"
             )
 
-        # Load credentials from parameters or environment variables
-        self.api_key = api_key or os.getenv("CHROMA_CLOUD_API_KEY")
-        self.tenant = tenant or os.getenv("CHROMA_TENANT")
-        self.database = database or os.getenv("CHROMA_DATABASE")
-        self.collection_name = collection_name
-
         # Validate required credentials
-        if not all([self.api_key, self.tenant, self.database]):
+        if not all([api_key, tenant, database]):
             raise ValueError(
-                "ChromaDB credentials not found. "
-                "Set CHROMA_CLOUD_API_KEY, CHROMA_TENANT, and CHROMA_DATABASE "
-                "environment variables, or pass them as parameters."
+                "ChromaDB credentials must be provided as parameters."
             )
+
+        self.api_key = api_key
+        self.tenant = tenant
+        self.database = database
+        self.collection_name = collection_name
 
         # Initialize ChromaDB Cloud client
         self.client = chromadb.CloudClient(

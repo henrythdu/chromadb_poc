@@ -35,6 +35,8 @@ def main():
     logger.info("=" * 80)
 
     # Configuration
+    # Note: This script is specifically for downloading 500 papers for the POC.
+    # The config.toml max_papers (200) is for the general pipeline.
     max_papers = 500
     query = "cat:cs.LG"  # Machine Learning category
     download_dir = Path("./ml_pdfs")

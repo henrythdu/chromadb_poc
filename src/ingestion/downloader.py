@@ -44,15 +44,16 @@ class ArxivDownloader:
         logger.info(f"Searching ArXiv for query='{query}', max_results={max_results}")
 
         papers = []
+        failed_count = 0
         search = arxiv.Search(
             query=query,
             max_results=max_results,
             sort_by=arxiv.SortCriterion.SubmittedDate,
         )
 
-        try:
-            client = arxiv.Client()
-            for result in client.results(search):
+        client = arxiv.Client()
+        for result in client.results(search):
+            try:
                 logger.debug(f"Processing paper: {result.title}")
 
                 # Extract metadata
@@ -65,11 +66,15 @@ class ArxivDownloader:
                 papers.append(paper)
                 logger.info(f"Downloaded paper {paper['arxiv_id']}: {paper['title']}")
 
-        except Exception as e:
-            logger.error(f"Error downloading papers: {e}", exc_info=True)
-            raise
+            except Exception as e:
+                # Get arxiv_id for error reporting
+                arxiv_id = result.get_short_id()
+                logger.error(f"Failed to process paper {arxiv_id}: {e}")
+                failed_count += 1
+                # Continue with next paper
+                continue
 
-        logger.info(f"Successfully downloaded {len(papers)} papers")
+        logger.info(f"Successfully downloaded {len(papers)} papers, {failed_count} failed")
         return papers
 
     def _extract_metadata(self, result: arxiv.Result) -> dict[str, Any]:
@@ -81,9 +86,8 @@ class ArxivDownloader:
         Returns:
             Dictionary containing extracted metadata fields
         """
-        # Extract arxiv_id from entry_id
-        # entry_id format: http://arxiv.org/abs/2301.12345v1
-        arxiv_id = result.entry_id.split("/abs/")[-1]
+        # Use the official library method for robustness
+        arxiv_id = result.get_short_id()
 
         # Extract authors
         authors = [author.name for author in result.authors]

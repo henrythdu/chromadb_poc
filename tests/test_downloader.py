@@ -27,6 +27,7 @@ def test_metadata_extraction():
 
     mock_result = Mock()
     mock_result.entry_id = "http://arxiv.org/abs/2301.12345v1"
+    mock_result.get_short_id.return_value = "2301.12345v1"
     mock_result.title = "Test Paper Title"
     mock_result.authors = [mock_author1, mock_author2]
     mock_result.published = datetime(2023, 1, 15, 10, 30, 0)
@@ -96,6 +97,7 @@ def test_sanitized_filename():
     # Test with a title that has special characters
     mock_result = Mock()
     mock_result.entry_id = "http://arxiv.org/abs/2301.12345v1"
+    mock_result.get_short_id.return_value = "2301.12345v1"
     mock_result.title = "Test/Paper: Special<Chars> & More"
     mock_result.authors = []
     mock_result.published = datetime(2023, 1, 15, 10, 30, 0)

@@ -37,7 +37,8 @@ def main():
     # Display configuration (without sensitive data)
     logger.info(f"Tenant: {settings.chroma_tenant}")
     logger.info(f"Database: {settings.chroma_database}")
-    logger.info(f"API Key: {'*' * 20}{settings.chroma_cloud_api_key[-8:]}")
+    api_key_status = "Provided" if settings.chroma_cloud_api_key else "Not Provided"
+    logger.info(f"API Key: {api_key_status}")
 
     collection_name = "arxiv_papers_v1"
 

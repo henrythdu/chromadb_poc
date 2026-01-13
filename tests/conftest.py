@@ -13,13 +13,18 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 def mock_api_keys(monkeypatch):
     """Provide mock API keys for testing."""
     monkeypatch.setenv("LLAMAPARSE_API_KEY", "test_llamaparse_key")
-    monkeypatch.setenv("CHROMA_HOST", "http://test-chroma.com")
-    monkeypatch.setenv("CHROMA_API_KEY", "test_chroma_key")
+    monkeypatch.setenv("CHROMA_CLOUD_API_KEY", "test_chroma_key")
+    monkeypatch.setenv("CHROMA_TENANT", "test-tenant")
+    monkeypatch.setenv("CHROMA_DATABASE", "test-db")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test_openrouter_key")
     monkeypatch.setenv("COHERE_API_KEY", "test_cohere_key")
     return {
         "llamaparse": "test_llamaparse_key",
-        "chroma": {"host": "http://test-chroma.com", "key": "test_chroma_key"},
+        "chroma": {
+            "api_key": "test_chroma_key",
+            "tenant": "test-tenant",
+            "database": "test-db",
+        },
         "openrouter": "test_openrouter_key",
         "cohere": "test_cohere_key",
     }

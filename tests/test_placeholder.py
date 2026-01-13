@@ -9,7 +9,9 @@ def test_pytest_works():
 def test_fixture_works(mock_api_keys):
     """Verify fixtures load correctly."""
     assert mock_api_keys["llamaparse"] == "test_llamaparse_key"
-    assert mock_api_keys["chroma"]["host"] == "http://test-chroma.com"
+    assert mock_api_keys["chroma"]["api_key"] == "test_chroma_key"
+    assert mock_api_keys["chroma"]["tenant"] == "test-tenant"
+    assert mock_api_keys["chroma"]["database"] == "test-db"
 
 
 def test_sample_fixtures(sample_arxiv_metadata, sample_chunk):
