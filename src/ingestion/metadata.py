@@ -15,13 +15,18 @@ class MetadataBuilder:
             paper_metadata: Raw metadata from downloader
 
         Returns:
-            Enriched document metadata
+            Enriched document metadata with ChromaDB-compatible values
         """
+        # Convert authors list to string for ChromaDB compatibility
+        # ChromaDB only accepts: str, int, float, bool, or None
+        authors = paper_metadata.get("authors", [])
+        authors_str = ", ".join(authors) if authors else "Unknown"
+
         return {
             "document_id": paper_metadata["arxiv_id"],
             "arxiv_id": paper_metadata["arxiv_id"],
             "title": paper_metadata.get("title", "Unknown"),
-            "authors": paper_metadata.get("authors", []),
+            "authors": authors_str,
             "published_date": paper_metadata.get("published_date", ""),
             "pdf_url": paper_metadata.get("pdf_url", ""),
         }
