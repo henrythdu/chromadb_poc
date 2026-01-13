@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str
     cohere_api_key: str
 
+    # ChromaDB Cloud settings
+    chroma_host: str = "https://api.trychroma.cloud"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
