@@ -1,5 +1,7 @@
 """Orchestrate ingestion pipeline: parse → chunk → embed → store."""
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 from typing import Any, Dict
 
 from .chroma_store import ChromaStore
@@ -137,3 +139,105 @@ class IngestionIndexer:
                 logger.error(f"Failed to index {metadata.get('arxiv_id')}: {result.get('error')}")
 
         return results
+
+    def index_batch_parallel(
+        self,
+        papers: list[Dict[str, Any]],
+        max_workers: int = 5,
+    ) -> Dict[str, Any]:
+        """Index multiple papers in parallel using thread pool.
+
+        Args:
+            papers: List of papers with file_path and metadata
+            max_workers: Maximum number of concurrent threads (default: 5)
+
+        Returns:
+            Summary with success/failure counts
+        """
+        results = {
+            "success": 0,
+            "failed": 0,
+            "total_chunks": 0,
+            "lock": Lock(),  # Thread-safe counter updates
+        }
+
+        def process_single_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
+            """Process a single paper, returns result dict."""
+            pdf_path = paper.get("file_path")
+            metadata = {k: v for k, v in paper.items() if k != "file_path"}
+
+            # Validate pdf_path exists
+            if pdf_path is None:
+                logger.error(f"Missing file_path for paper {metadata.get('arxiv_id', 'unknown')}")
+                return {
+                    "status": "error",
+                    "error": "Missing file_path",
+                    "chunks_indexed": 0,
+                    "arxiv_id": metadata.get("arxiv_id", "unknown"),
+                }
+
+            return self.index_paper(pdf_path, metadata)
+
+        # Filter out papers without file_path first
+        valid_papers = [p for p in papers if p.get("file_path") is not None]
+
+        if len(valid_papers) < len(papers):
+            missing = len(papers) - len(valid_papers)
+            logger.warning(f"Skipping {missing} papers without file_path")
+            results["failed"] += missing
+
+        logger.info(
+            f"Processing {len(valid_papers)} papers with {max_workers} workers"
+        )
+
+        # Process papers in parallel
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_paper = {
+                executor.submit(process_single_paper, paper): paper
+                for paper in valid_papers
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_paper):
+                paper = future_to_paper[future]
+                try:
+                    result = future.result()
+
+                    # Thread-safe update of results
+                    with results["lock"]:
+                        if result["status"] == "success":
+                            results["success"] += 1
+                            results["total_chunks"] += result["chunks_indexed"]
+                            logger.info(
+                                f"✓ {result['arxiv_id']}: {result['chunks_indexed']} chunks"
+                            )
+                        else:
+                            results["failed"] += 1
+                            logger.error(
+                                f"✗ {result.get('arxiv_id', 'unknown')}: "
+                                f"{result.get('error', 'Unknown error')}"
+                            )
+
+                except Exception as e:
+                    # Handle unexpected exceptions
+                    with results["lock"]:
+                        results["failed"] += 1
+                    logger.error(
+                        f"Exception processing {paper.get('arxiv_id', 'unknown')}: {e}",
+                        exc_info=True,
+                    )
+
+        # Remove lock from final results
+        final_results = {
+            "success": results["success"],
+            "failed": results["failed"],
+            "total_chunks": results["total_chunks"],
+        }
+
+        logger.info(
+            f"Parallel processing complete: {final_results['success']} success, "
+            f"{final_results['failed']} failed, {final_results['total_chunks']} total chunks"
+        )
+
+        return final_results
