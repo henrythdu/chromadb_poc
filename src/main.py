@@ -1,5 +1,6 @@
 """Main entry point for ChromaDB POC."""
 
+
 def main():
     print("ChromaDB POC")
 

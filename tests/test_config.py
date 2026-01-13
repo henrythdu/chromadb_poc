@@ -1,4 +1,5 @@
 """Test configuration loading."""
+
 import os
 import sys
 
@@ -30,13 +31,19 @@ def test_config_loads_from_env(monkeypatch):
 def test_config_validation_fails_without_keys(monkeypatch):
     """Test that config validation fails without required keys."""
     # Clear all env vars
-    for key in ["LLAMAPARSE_API_KEY", "CHROMA_HOST", "CHROMA_API_KEY",
-                "OPENROUTER_API_KEY", "COHERE_API_KEY"]:
+    for key in [
+        "LLAMAPARSE_API_KEY",
+        "CHROMA_HOST",
+        "CHROMA_API_KEY",
+        "OPENROUTER_API_KEY",
+        "COHERE_API_KEY",
+    ]:
         monkeypatch.delenv(key, raising=False)
 
     # Force reload by clearing cached module
-    if 'src.config' in sys.modules:
-        del sys.modules['src.config']
+    if "src.config" in sys.modules:
+        del sys.modules["src.config"]
 
+    # Import should fail without env vars
     with pytest.raises(ValidationError):
         pass
