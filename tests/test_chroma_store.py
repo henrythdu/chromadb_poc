@@ -28,7 +28,7 @@ def test_chroma_initialization():
         pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
 
     # Mock the Chroma client to avoid actual connection
-    with patch("src.ingestion.chroma_store.chromadb.HttpClient") as mock_client:
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
 
@@ -49,6 +49,9 @@ def test_chroma_initialization():
 
         # Verify store attributes
         assert store.collection_name == "test_collection"
+        assert store.api_key == "test_key"
+        assert store.tenant == "test-tenant"
+        assert store.database == "test_database"
         assert store.client == mock_instance
 
 
@@ -65,7 +68,7 @@ def test_get_or_create_collection():
     if chromadb is None:
         pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
 
-    with patch("src.ingestion.chroma_store.chromadb.HttpClient") as mock_client:
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
 
@@ -74,8 +77,9 @@ def test_get_or_create_collection():
         mock_instance.get_or_create_collection.return_value = mock_collection
 
         store = ChromaStore(
-            host="http://test-chroma.com",
             api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
             collection_name="test_collection",
         )
 
@@ -102,7 +106,7 @@ def test_add_documents():
     if chromadb is None:
         pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
 
-    with patch("src.ingestion.chroma_store.chromadb.HttpClient") as mock_client:
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
 
@@ -111,8 +115,9 @@ def test_add_documents():
         mock_instance.get_or_create_collection.return_value = mock_collection
 
         store = ChromaStore(
-            host="http://test-chroma.com",
             api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
             collection_name="test_collection",
         )
 
@@ -143,7 +148,7 @@ def test_count():
     if chromadb is None:
         pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
 
-    with patch("src.ingestion.chroma_store.chromadb.HttpClient") as mock_client:
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
 
@@ -153,8 +158,9 @@ def test_count():
         mock_instance.get_or_create_collection.return_value = mock_collection
 
         store = ChromaStore(
-            host="http://test-chroma.com",
             api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
             collection_name="test_collection",
         )
 
@@ -179,7 +185,7 @@ def test_connection():
     if chromadb is None:
         pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
 
-    with patch("src.ingestion.chroma_store.chromadb.HttpClient") as mock_client:
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
         mock_instance = MagicMock()
         mock_client.return_value = mock_instance
 
@@ -187,8 +193,9 @@ def test_connection():
         mock_instance.heartbeat.return_value = True
 
         store = ChromaStore(
-            host="http://test-chroma.com",
             api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
             collection_name="test_collection",
         )
 

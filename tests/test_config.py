@@ -30,8 +30,12 @@ def test_config_loads_from_env(monkeypatch):
     assert settings.cohere_api_key == "test_cohere_key"
 
 
-def test_config_validation_fails_without_keys(monkeypatch):
+def test_config_validation_fails_without_keys(monkeypatch, tmp_path):
     """Test that config validation fails without required keys."""
+    # Create a temporary empty .env file
+    empty_env = tmp_path / ".env"
+    empty_env.write_text("")
+
     # Clear all env vars
     for key in [
         "LLAMAPARSE_API_KEY",
@@ -47,6 +51,24 @@ def test_config_validation_fails_without_keys(monkeypatch):
     if "src.config" in sys.modules:
         del sys.modules["src.config"]
 
+    # Patch Settings to use empty .env file
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+
+    class TestSettings(BaseSettings):
+        llamaparse_api_key: str
+        chroma_cloud_api_key: str
+        chroma_tenant: str
+        chroma_database: str
+        openrouter_api_key: str
+        cohere_api_key: str
+
+        model_config = SettingsConfigDict(
+            env_file=str(empty_env),
+            env_file_encoding="utf-8",
+            case_sensitive=False,
+            extra="ignore",
+        )
+
     # Import should fail without env vars
     with pytest.raises(ValidationError):
-        from src.config import settings  # noqa: F401
+        TestSettings()
