@@ -46,4 +46,4 @@ def test_config_validation_fails_without_keys(monkeypatch):
 
     # Import should fail without env vars
     with pytest.raises(ValidationError):
-        pass
+        from src.config import settings  # noqa: F401

@@ -1,7 +1,6 @@
 """Placeholder tests to verify pytest works."""
 
 
-
 def test_pytest_works():
     """Verify pytest is functioning."""
     assert True
