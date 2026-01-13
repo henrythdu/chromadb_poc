@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv/
+venv/
+
+# Worktrees
+.worktrees/
+
+# Data & Logs
+ml_pdfs/
+logs/
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Beads (optional - uncomment if not tracking in git)
+# .beads/
