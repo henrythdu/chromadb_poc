@@ -36,8 +36,9 @@ def test_hybrid_search_initialization(mock_cloud_client):
         mock_index_instance.as_retriever.return_value = mock_retriever
 
         retriever = HybridSearchRetriever(
-            chroma_host="http://test.com",
             chroma_api_key="test_key",
+            chroma_tenant="test-tenant",
+            chroma_database="test-db",
             top_k=50,
         )
 
@@ -51,8 +52,9 @@ def test_hybrid_search_retrieves():
     from src.retrieval.hybrid_search import HybridSearchRetriever
 
     retriever = HybridSearchRetriever(
-        chroma_host=settings.chroma_host,
         chroma_api_key=settings.chroma_cloud_api_key,
+        chroma_tenant=settings.chroma_tenant,
+        chroma_database=settings.chroma_database,
         top_k=50,
     )
 

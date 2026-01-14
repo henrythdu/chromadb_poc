@@ -12,8 +12,9 @@ class HybridSearchRetriever:
 
     def __init__(
         self,
-        chroma_host: str,
         chroma_api_key: str,
+        chroma_tenant: str,
+        chroma_database: str,
         collection_name: str = "arxiv_papers_v1",
         top_k: int = 50,
         embedding_model: str = "BAAI/bge-large-en-v1.5",
@@ -21,23 +22,22 @@ class HybridSearchRetriever:
         """Initialize hybrid search retriever.
 
         Args:
-            chroma_host: Chroma Cloud host
             chroma_api_key: Chroma API key
+            chroma_tenant: Chroma Cloud tenant ID
+            chroma_database: Chroma Cloud database name
             collection_name: Collection to search
             top_k: Number of results to retrieve
             embedding_model: Embedding model name
         """
-        self.chroma_host = chroma_host
-        self.chroma_api_key = chroma_api_key
-        self.collection_name = collection_name
         self.top_k = top_k
         self.embedding_model = embedding_model
+        self.collection_name = collection_name
 
-        # Initialize Chroma client
+        # Initialize Chroma client with correct parameters
         self.client = chromadb.CloudClient(
             api_key=chroma_api_key,
-            tenant=chroma_host,
-            database=collection_name,
+            tenant=chroma_tenant,
+            database=chroma_database,
         )
 
         # Get collection
