@@ -67,7 +67,8 @@ class RAGQueryEngine:
         Returns:
             Result dict with answer and citations
         """
-        logger.info(f"Query: {question}")
+        logger.info("Executing new RAG query...")
+        logger.debug(f"Query: {question}")  # Only log at debug level
 
         # Step 1: Retrieve
         retrieved = self.retriever.retrieve(question)

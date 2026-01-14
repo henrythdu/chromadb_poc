@@ -84,8 +84,9 @@ def main():
     logger.info("ChromaDB connection successful")
 
     # Index papers in parallel
-    # Using 5 workers to balance speed and API rate limits
-    max_workers = 5
+    # Using 4 workers to avoid CPU oversaturation
+    # (16 cores, Docling uses ~3 threads per worker internally)
+    max_workers = 4
     logger.info(f"Starting PARALLEL ingestion with {max_workers} workers...")
     logger.info("=" * 60)
 

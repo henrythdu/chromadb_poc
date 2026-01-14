@@ -70,16 +70,21 @@ class ChromaStore:
     def add_documents(
         self, documents: list[str], metadatas: list[dict], ids: list[str]
     ):
-        """Add documents to the collection.
+        """Add or update documents in the collection using upsert.
 
         Args:
             documents: List of document texts
             metadatas: List of metadata dictionaries for each document
             ids: List of unique identifiers for each document
+
+        Note:
+            Uses upsert instead of add to enable resumable ingestion.
+            Existing documents with the same ID will be updated,
+            new documents will be added. No duplicate errors.
         """
         collection = self._get_or_create_collection()
-        collection.add(documents=documents, metadatas=metadatas, ids=ids)
-        logger.info(f"Added {len(documents)} documents to collection")
+        collection.upsert(documents=documents, metadatas=metadatas, ids=ids)
+        logger.info(f"Upserted {len(documents)} documents to collection")
 
     def count(self) -> int:
         """Get the number of documents in the collection.

@@ -127,8 +127,8 @@ def test_add_documents():
         # Add documents
         store.add_documents(documents=documents, metadatas=metadatas, ids=ids)
 
-        # Verify add was called
-        mock_collection.add.assert_called_once_with(
+        # Verify upsert was called (changed from add to upsert for resumable ingestion)
+        mock_collection.upsert.assert_called_once_with(
             documents=documents, metadatas=metadatas, ids=ids
         )
 

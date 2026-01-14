@@ -14,15 +14,17 @@ class DoclingWrapper:
     that provides high-quality text extraction without API costs.
     """
 
-    def __init__(self, result_type: str = "markdown") -> None:
+    def __init__(self, result_type: str = "markdown", enable_ocr: bool = False) -> None:
         """Initialize the Docling wrapper.
 
         Args:
             result_type: Output format (only "markdown" supported for now)
+            enable_ocr: Whether to enable OCR for image-based PDFs (default: False for POC)
         """
         self.result_type = result_type
+        self.enable_ocr = enable_ocr
         self._converter: Any = None
-        logger.info(f"Initialized DoclingWrapper with result_type={result_type}")
+        logger.info(f"Initialized DoclingWrapper with result_type={result_type}, enable_ocr={enable_ocr}")
 
     def _get_converter(self) -> Any:
         """Lazy load the Docling converter.
@@ -36,9 +38,20 @@ class DoclingWrapper:
         if self._converter is None:
             try:
                 from docling.document_converter import DocumentConverter
+                from docling.datamodel.pipeline_options import PdfPipelineOptions
 
-                self._converter = DocumentConverter()
-                logger.info("Docling converter initialized successfully")
+                # Configure pipeline options for maximum speed
+                pipeline_options = PdfPipelineOptions()
+                pipeline_options.do_ocr = self.enable_ocr
+                pipeline_options.do_table_structure = False
+
+                self._converter = DocumentConverter(
+                    format_options={"application/pdf": pipeline_options}
+                )
+                logger.info(
+                    f"Docling converter initialized "
+                    f"(OCR: {'enabled' if self.enable_ocr else 'disabled'}, table structure: disabled)"
+                )
             except ImportError as e:
                 logger.error(f"Failed to import docling: {e}")
                 raise
