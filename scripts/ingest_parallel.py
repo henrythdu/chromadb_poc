@@ -102,11 +102,12 @@ def main():
     logger.info("=" * 60)
     logger.info(f"Papers processed: {total_papers}")
     logger.info(f"Success: {results['success']}")
+    logger.info(f"Skipped: {results.get('skipped', 0)}")
     logger.info(f"Failed: {results['failed']}")
     logger.info(f"Total chunks indexed: {results['total_chunks']}")
     logger.info(f"Total time: {elapsed_time:.1f} seconds ({elapsed_time/60:.1f} minutes)")
     if results['success'] > 0:
-        logger.info(f"Avg time per paper: {elapsed_time/results['success']:.1f} seconds")
+        logger.info(f"Avg time per successfully indexed paper: {elapsed_time/results['success']:.1f} seconds")
     logger.info("=" * 60)
 
     # Verify ChromaDB count

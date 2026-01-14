@@ -110,3 +110,48 @@ class ChromaStore:
         except Exception as e:
             logger.error(f"Failed to connect to ChromaDB Cloud: {e}")
             return False
+
+    def paper_exists(self, arxiv_id: str) -> bool:
+        """Check if any chunks exist for the given arxiv_id.
+
+        Args:
+            arxiv_id: The arxiv ID to check (e.g., "2601.03764v1")
+
+        Returns:
+            True if any chunks with matching arxiv_id are found
+        """
+        collection = self._get_or_create_collection()
+
+        # Query for documents with this arxiv_id in metadata
+        results = collection.get(
+            where={"arxiv_id": arxiv_id},
+            limit=1  # Only need to know if at least one exists
+        )
+
+        exists = len(results.get("ids", [])) > 0
+        if exists:
+            logger.debug(f"Paper {arxiv_id} already exists in collection")
+        return exists
+
+    def get_existing_paper_ids(self, arxiv_ids: list[str]) -> set[str]:
+        """Given a list of arxiv_ids, return a set of those that already exist.
+
+        Args:
+            arxiv_ids: List of arxiv IDs to check
+
+        Returns:
+            Set of arxiv_ids that exist in the collection
+        """
+        if not arxiv_ids:
+            return set()
+
+        collection = self._get_or_create_collection()
+
+        # Use the $in operator for batch metadata query
+        results = collection.get(
+            where={"arxiv_id": {"$in": arxiv_ids}},
+            include=["metadatas"]  # Only fetch metadata for efficiency
+        )
+
+        # Extract unique arxiv_ids from the metadata of found chunks
+        return {meta["arxiv_id"] for meta in results.get("metadatas", []) if "arxiv_id" in meta}
