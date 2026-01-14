@@ -67,10 +67,9 @@ def main():
             **metadata
         })
 
-    # Initialize indexer
-    logger.info("Initializing IngestionIndexer...")
+    # Initialize indexer (using Docling - free, local parser)
+    logger.info("Initializing IngestionIndexer with Docling...")
     indexer = IngestionIndexer(
-        llamaparse_api_key=settings.llamaparse_api_key,
         chroma_api_key=settings.chroma_cloud_api_key,
         chroma_tenant=settings.chroma_tenant,
         chroma_database=settings.chroma_database,

@@ -7,7 +7,7 @@ from typing import Any, Dict
 from .chroma_store import ChromaStore
 from .chunker import DocumentChunker
 from .metadata import MetadataBuilder
-from .parser import LlamaParserWrapper
+from .parser import DoclingWrapper, LlamaParserWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,10 @@ class IngestionIndexer:
 
     def __init__(
         self,
-        llamaparse_api_key: str,
         chroma_api_key: str,
         chroma_tenant: str,
         chroma_database: str,
+        llamaparse_api_key: str | None = None,
         chunk_size: int = 800,
         chunk_overlap: int = 100,
         collection_name: str = "papers",
@@ -28,15 +28,21 @@ class IngestionIndexer:
         """Initialize indexer components.
 
         Args:
-            llamaparse_api_key: LlamaParse API key
             chroma_api_key: ChromaDB API key
             chroma_tenant: ChromaDB tenant ID
             chroma_database: ChromaDB database name
+            llamaparse_api_key: LlamaParse API key (optional, uses Docling if not provided)
             chunk_size: Chunk size for splitting
             chunk_overlap: Chunk overlap
             collection_name: Chroma collection name
         """
-        self.parser = LlamaParserWrapper(api_key=llamaparse_api_key)
+        # Use Docling by default (free, local), fallback to LlamaParse if API key provided
+        if llamaparse_api_key:
+            logger.info("Using LlamaParse (cloud service)")
+            self.parser = LlamaParserWrapper(api_key=llamaparse_api_key)
+        else:
+            logger.info("Using Docling (local, free)")
+            self.parser = DoclingWrapper()
         self.chunker = DocumentChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.metadata_builder = MetadataBuilder()
         self.chroma = ChromaStore(

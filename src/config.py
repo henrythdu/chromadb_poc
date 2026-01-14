@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # API Keys (required)
-    llamaparse_api_key: str
+    # API Keys (llamaparse_api_key is optional - uses Docling by default)
+    llamaparse_api_key: str | None = None
     chroma_cloud_api_key: str
     chroma_tenant: str
     chroma_database: str

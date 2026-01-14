@@ -1,12 +1,118 @@
-"""LlamaParse PDF parser module."""
+"""PDF parser module supporting Docling (local) and LlamaParse (cloud)."""
 
 import logging
-import time
 from pathlib import Path
-from threading import Lock
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+class DoclingWrapper:
+    """Wrapper for Docling to convert PDFs to Markdown locally.
+
+    Docling is an open-source PDF parsing library by IBM Research
+    that provides high-quality text extraction without API costs.
+    """
+
+    def __init__(self, result_type: str = "markdown") -> None:
+        """Initialize the Docling wrapper.
+
+        Args:
+            result_type: Output format (only "markdown" supported for now)
+        """
+        self.result_type = result_type
+        self._converter: Any = None
+        logger.info(f"Initialized DoclingWrapper with result_type={result_type}")
+
+    def _get_converter(self) -> Any:
+        """Lazy load the Docling converter.
+
+        Returns:
+            DocumentConverter instance
+
+        Raises:
+            ImportError: If docling is not installed
+        """
+        if self._converter is None:
+            try:
+                from docling.document_converter import DocumentConverter
+
+                self._converter = DocumentConverter()
+                logger.info("Docling converter initialized successfully")
+            except ImportError as e:
+                logger.error(f"Failed to import docling: {e}")
+                raise
+        return self._converter
+
+    def parse_pdf(
+        self, pdf_path: str | Path, max_retries: int = 2
+    ) -> dict[str, Any]:
+        """Parse a PDF file to Markdown format.
+
+        Args:
+            pdf_path: Path to the PDF file to parse
+            max_retries: Maximum number of retry attempts (default: 2)
+
+        Returns:
+            Dictionary with keys:
+                - markdown: Parsed markdown content (empty if error)
+                - pages: Number of pages parsed (0 if error)
+                - error: Error message if parsing failed, None otherwise
+        """
+        import time
+
+        pdf_path = Path(pdf_path)
+
+        # Check if file exists
+        if not pdf_path.exists():
+            error_msg = f"File not found: {pdf_path}"
+            logger.error(error_msg)
+            return {"markdown": "", "pages": 0, "error": error_msg}
+
+        # Parse with retry logic
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                logger.info(
+                    f"Parsing PDF {pdf_path} (attempt {attempt + 1}/{max_retries})"
+                )
+
+                # Get converter (lazy loading)
+                converter = self._get_converter()
+
+                # Convert PDF to markdown
+                result = converter.convert(str(pdf_path))
+
+                # Export to markdown
+                markdown_content = result.document.export_to_markdown()
+
+                # Get page count
+                page_count = len(result.document.pages)
+
+                logger.info(
+                    f"Successfully parsed {pdf_path}: {page_count} pages, "
+                    f"{len(markdown_content)} characters"
+                )
+
+                return {
+                    "markdown": markdown_content.strip(),
+                    "pages": page_count,
+                    "error": None,
+                }
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"Attempt {attempt + 1}/{max_retries} failed: {e}"
+                )
+                # Wait before retry to give system time to recover
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+
+        # All retries exhausted
+        error_msg = f"Failed to parse PDF after {max_retries} attempts: {last_error}"
+        logger.error(error_msg)
+        return {"markdown": "", "pages": 0, "error": error_msg}
 
 
 class LlamaParserWrapper:
@@ -14,6 +120,9 @@ class LlamaParserWrapper:
 
     This class provides a lazy-loading wrapper around LlamaParse with
     retry logic and error handling for robust PDF parsing.
+
+    Note: LlamaParse is a cloud service with API costs.
+    For local processing, use DoclingWrapper instead.
     """
 
     def __init__(self, api_key: str, result_type: str = "markdown") -> None:
@@ -26,11 +135,10 @@ class LlamaParserWrapper:
         self.api_key = api_key
         self.result_type = result_type
         self._client: Any = None
-        self._client_lock = Lock()  # Thread-safe client initialization
         logger.info(f"Initialized LlamaParserWrapper with result_type={result_type}")
 
     def _get_client(self) -> Any:
-        """Lazy load the LlamaParse client (thread-safe).
+        """Lazy load the LlamaParse client.
 
         Returns:
             LlamaParse client instance
@@ -39,21 +147,18 @@ class LlamaParserWrapper:
             ImportError: If llama_parse is not installed
         """
         if self._client is None:
-            with self._client_lock:
-                # Double-check inside the lock to prevent re-initialization
-                if self._client is None:
-                    try:
-                        from llama_parse import LlamaParse
+            try:
+                from llama_parse import LlamaParse
 
-                        self._client = LlamaParse(
-                            api_key=self.api_key,
-                            result_type=self.result_type,
-                            verbose=True,
-                        )
-                        logger.info("LlamaParse client initialized successfully")
-                    except ImportError as e:
-                        logger.error(f"Failed to import llama_parse: {e}")
-                        raise
+                self._client = LlamaParse(
+                    api_key=self.api_key,
+                    result_type=self.result_type,
+                    verbose=True,
+                )
+                logger.info("LlamaParse client initialized successfully")
+            except ImportError as e:
+                logger.error(f"Failed to import llama_parse: {e}")
+                raise
         return self._client
 
     def parse_pdf(
@@ -71,6 +176,8 @@ class LlamaParserWrapper:
                 - pages: Number of pages parsed (0 if error)
                 - error: Error message if parsing failed, None otherwise
         """
+        import time
+
         pdf_path = Path(pdf_path)
 
         # Check if file exists
@@ -92,7 +199,6 @@ class LlamaParserWrapper:
         for attempt in range(max_retries):
             try:
                 # Simple throttle to avoid hitting API limits too fast
-                # (More sophisticated rate limiter could be used in production)
                 if attempt == 0:
                     time.sleep(0.5)  # 500ms delay before each API call
 
@@ -139,3 +245,7 @@ class LlamaParserWrapper:
         error_msg = f"Failed to parse PDF after {max_retries} attempts: {last_error}"
         logger.error(error_msg)
         return {"markdown": "", "pages": 0, "error": error_msg}
+
+
+# For backward compatibility, default to Docling (free, local)
+DefaultParser = DoclingWrapper

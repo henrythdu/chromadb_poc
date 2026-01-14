@@ -5,6 +5,7 @@ llama-index-vector-stores-chroma>=0.1.0
 
 # Parsing
 llama-parse>=0.4.0
+docling>=0.1.0
 
 # Database & APIs
 chromadb>=0.4.0
