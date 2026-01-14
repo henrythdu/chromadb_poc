@@ -27,7 +27,7 @@ class HybridSearchRetriever:
             chroma_database: Chroma Cloud database name
             collection_name: Collection to search
             top_k: Number of results to retrieve
-            embedding_model: Embedding model name
+            embedding_model: Embedding model name (for future use with local embeddings)
         """
         self.top_k = top_k
         self.embedding_model = embedding_model
@@ -43,33 +43,7 @@ class HybridSearchRetriever:
         # Get collection
         self.collection = self.client.get_or_create_collection(name=collection_name)
 
-        # Initialize retrievers
-        self._setup_retrievers()
-
-    def _setup_retrievers(self):
-        """Set up vector retriever."""
-        from llama_index.core import StorageContext, VectorStoreIndex
-        from llama_index.vector_stores.chroma import ChromaVectorStore
-
-        # Create Chroma vector store
-        vector_store = ChromaVectorStore(
-            chroma_collection=self.collection,
-        )
-
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-        # Create index from existing collection
-        self.index = VectorStoreIndex.from_vector_store(
-            vector_store=vector_store,
-            storage_context=storage_context,
-        )
-
-        # Vector retriever
-        self.vector_retriever = self.index.as_retriever(
-            similarity_top_k=self.top_k,
-        )
-
-        # BM25 retrieever (will be built from documents later)
+        # BM25 retriever (will be built from documents later)
         self.bm25_retriever = None
 
     def retrieve(
@@ -92,18 +66,38 @@ class HybridSearchRetriever:
             return self._vector_retrieve(query)
 
     def _vector_retrieve(self, query: str) -> list[dict[str, Any]]:
-        """Retrieve using vector search only."""
-        nodes = self.vector_retriever.retrieve(query)
+        """Retrieve using vector search only.
 
-        results = []
-        for node in nodes:
-            results.append({
-                "text": node.text,
-                "metadata": node.metadata,
-                "score": node.score if hasattr(node, "score") else 0.0,
-            })
+        Uses Chroma's native query method which automatically uses the
+        tenant's default embedding function (matching ingestion).
+        """
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=self.top_k,
+        )
 
-        return results[: self.top_k]
+        # Format results
+        formatted_results = []
+        if results and results["documents"] and results["documents"][0]:
+            for i, doc in enumerate(results["documents"][0]):
+                metadata = {}
+                if results["metadatas"] and results["metadatas"][0]:
+                    metadata = results["metadatas"][0][i] or {}
+
+                distance = 0.0
+                if results["distances"] and results["distances"][0]:
+                    distance = results["distances"][0][i] or 0.0
+
+                # Convert distance to similarity score (higher is better)
+                score = 1.0 - distance if distance is not None else 0.0
+
+                formatted_results.append({
+                    "text": doc,
+                    "metadata": metadata,
+                    "score": score,
+                })
+
+        return formatted_results
 
     def _hybrid_retrieve(self, query: str) -> list[dict[str, Any]]:
         """Retrieve using hybrid vector + BM25 with RRF fusion.

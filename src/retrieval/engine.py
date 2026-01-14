@@ -111,18 +111,20 @@ class RAGQueryEngine:
         Returns:
             List of formatted citations
         """
+        from ..ingestion.metadata import MetadataBuilder
+
+        metadata_builder = MetadataBuilder()
         citations = []
         seen = set()
 
         for chunk in chunks:
             metadata = chunk.get("metadata", {})
             arxiv_id = metadata.get("arxiv_id", "Unknown")
-            title = metadata.get("title", "Unknown")[:50]
             page = metadata.get("page_number", "?")
 
             key = f"{arxiv_id}:{page}"
             if key not in seen:
-                citations.append(f"[{title}... (arxiv:{arxiv_id}), page {page}]")
+                citations.append(metadata_builder.format_citation(metadata))
                 seen.add(key)
 
         return citations

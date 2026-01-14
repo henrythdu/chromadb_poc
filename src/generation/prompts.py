@@ -32,11 +32,15 @@ def build_rag_prompt(query: str, context_chunks: list) -> str:
     Returns:
         Formatted prompt string
     """
+    from ..ingestion.metadata import MetadataBuilder
+
+    metadata_builder = MetadataBuilder()
+
     # Format context with citations
     context_parts = []
     for i, chunk in enumerate(context_chunks, 1):
         metadata = chunk.get("metadata", {})
-        citation = f"[{metadata.get('title', 'Unknown')[:50]}... (arxiv:{metadata.get('arxiv_id', '??')}), page {metadata.get('page_number', '?')}]"
+        citation = metadata_builder.format_citation(metadata)
 
         context_parts.append(f"{i}. {citation}\n{chunk['text']}")
 

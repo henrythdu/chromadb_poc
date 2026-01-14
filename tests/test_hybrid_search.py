@@ -23,26 +23,15 @@ def test_hybrid_search_initialization(mock_cloud_client):
     mock_collection = MagicMock()
     mock_client_instance.get_or_create_collection.return_value = mock_collection
 
-    # Mock llama-index components that are loaded in _setup_retrievers
-    with patch("llama_index.core.VectorStoreIndex") as mock_index, \
-         patch("llama_index.vector_stores.chroma.ChromaVectorStore") as mock_vs:
-        mock_vs_instance = MagicMock()
-        mock_vs.return_value = mock_vs_instance
+    retriever = HybridSearchRetriever(
+        chroma_api_key="test_key",
+        chroma_tenant="test-tenant",
+        chroma_database="test-db",
+        top_k=50,
+    )
 
-        mock_index_instance = MagicMock()
-        mock_index.from_vector_store.return_value = mock_index_instance
-
-        mock_retriever = MagicMock()
-        mock_index_instance.as_retriever.return_value = mock_retriever
-
-        retriever = HybridSearchRetriever(
-            chroma_api_key="test_key",
-            chroma_tenant="test-tenant",
-            chroma_database="test-db",
-            top_k=50,
-        )
-
-        assert retriever.top_k == 50
+    assert retriever.top_k == 50
+    assert retriever.collection_name == "arxiv_papers_v1"
 
 
 @pytest.mark.integration
@@ -55,6 +44,7 @@ def test_hybrid_search_retrieves():
         chroma_api_key=settings.chroma_cloud_api_key,
         chroma_tenant=settings.chroma_tenant,
         chroma_database=settings.chroma_database,
+        collection_name="test_papers",
         top_k=50,
     )
 
