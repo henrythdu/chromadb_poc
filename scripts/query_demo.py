@@ -26,7 +26,7 @@ def main():
     load_dotenv()
 
     # Get API keys
-    chroma_api_key = os.getenv("CHROMA_API_KEY")
+    chroma_api_key = os.getenv("CHROMA_CLOUD_API_KEY")
     chroma_tenant = os.getenv("CHROMA_TENANT")
     chroma_database = os.getenv("CHROMA_DATABASE")
     cohere_api_key = os.getenv("COHERE_API_KEY")
@@ -35,7 +35,7 @@ def main():
     # Validate required keys
     missing = []
     if not chroma_api_key:
-        missing.append("CHROMA_API_KEY")
+        missing.append("CHROMA_CLOUD_API_KEY")
     if not chroma_tenant:
         missing.append("CHROMA_TENANT")
     if not chroma_database:

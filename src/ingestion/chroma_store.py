@@ -155,3 +155,61 @@ class ChromaStore:
 
         # Extract unique arxiv_ids from the metadata of found chunks
         return {meta["arxiv_id"] for meta in results.get("metadatas", []) if "arxiv_id" in meta}
+
+    def update_paper_metadata(self, arxiv_id: str, new_metadata: dict) -> int:
+        """Update metadata for all chunks belonging to a paper.
+
+        Args:
+            arxiv_id: Paper ID whose chunks should be updated
+            new_metadata: New metadata dict (will be merged with existing)
+
+        Returns:
+            Number of chunks updated
+        """
+        collection = self._get_or_create_collection()
+
+        # Get all chunk IDs for this paper
+        results = collection.get(
+            where={"arxiv_id": arxiv_id},
+            include=["metadatas", "documents"]
+        )
+
+        if not results["ids"]:
+            logger.warning(f"No chunks found for {arxiv_id}")
+            return 0
+
+        # Update each chunk with new metadata
+        ids = results["ids"]
+        documents = results["documents"]
+        metadatas = []
+
+        for old_meta in results["metadatas"]:
+            # Merge old metadata with new metadata
+            merged = {**old_meta, **new_metadata}
+            metadatas.append(merged)
+
+        collection.update(ids=ids, metadatas=metadatas)
+        logger.info(f"Updated {len(ids)} chunks for {arxiv_id}")
+        return len(ids)
+
+    def get_all_arxiv_ids(self) -> list[str]:
+        """Get all unique arxiv_ids from the collection.
+
+        Returns:
+            Sorted list of unique arxiv_ids
+        """
+        collection = self._get_or_create_collection()
+
+        # Get all documents (may need pagination for large collections)
+        results = collection.get(
+            limit=10000,  # Adjust based on collection size
+            include=["metadatas"]
+        )
+
+        # Extract unique arxiv_ids
+        arxiv_ids = set()
+        for meta in results.get("metadatas", []):
+            if "arxiv_id" in meta:
+                arxiv_ids.add(meta["arxiv_id"])
+
+        return sorted(list(arxiv_ids))

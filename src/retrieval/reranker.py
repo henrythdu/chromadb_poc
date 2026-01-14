@@ -1,4 +1,4 @@
-"""Cohere Rerank v3 integration for result filtering."""
+"""Cohere Rerank API integration for result filtering."""
 import logging
 from typing import Any
 
@@ -12,7 +12,7 @@ class CohereReranker:
         self,
         api_key: str,
         top_n: int = 5,
-        model: str = "rerank-v3",
+        model: str = "rerank-english-v3.0",
     ):
         """Initialize Cohere reranker.
 

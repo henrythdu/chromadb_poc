@@ -21,7 +21,7 @@ class ChatInterface:
     def __init__(self):
         """Initialize the chat interface."""
         # Get API keys
-        self.chroma_api_key = os.getenv("CHROMA_API_KEY")
+        self.chroma_api_key = os.getenv("CHROMA_CLOUD_API_KEY")
         self.chroma_tenant = os.getenv("CHROMA_TENANT")
         self.chroma_database = os.getenv("CHROMA_DATABASE")
         self.cohere_api_key = os.getenv("COHERE_API_KEY")
