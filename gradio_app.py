@@ -61,13 +61,13 @@ def format_response(response: dict[str, Any]) -> tuple[str, str]:
 
 def query_paper(
     message: str,
-    history: list[tuple[str, str]],
-) -> tuple[str, list[tuple[str, str]], str]:
+    history: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]], str]:
     """Process user query through RAG pipeline.
 
     Args:
         message: User's question
-        history: Chat history
+        history: Chat history (list of message dicts with 'role' and 'content')
 
     Returns:
         Tuple of (empty_str, updated_history, citations)
@@ -85,21 +85,35 @@ def query_paper(
         # Format response
         answer, citations = format_response(response)
 
-        # Update history with user message and bot response
-        history.append((message, answer))
+        # Create new history with user and assistant messages (functional style)
+        new_history = history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": answer},
+        ]
 
         logger.info(f"Response: {len(answer)} chars, {len(citations)} citations")
 
-        return "", history, citations
+        return "", new_history, citations
 
+    except (KeyboardInterrupt, SystemExit):
+        # Allow system signals to propagate for clean shutdown
+        raise
     except Exception as e:
         logger.error(f"Error processing query: {e}", exc_info=True)
         error_msg = f"Sorry, an error occurred: {str(e)}"
-        history.append((message, error_msg))
-        return "", history, f"## Error\n\n{error_msg}"
+        error_history = history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": error_msg},
+        ]
+        # Show simpler message in citations panel
+        return (
+            "",
+            error_history,
+            "## Error\n\nAn error occurred. See the conversation for details.",
+        )
 
 
-def clear_history() -> tuple[str, str, list]:
+def clear_history() -> tuple[str, str, list[dict[str, Any]]]:
     """Clear chat history.
 
     Returns:
