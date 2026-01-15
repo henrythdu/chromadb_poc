@@ -63,7 +63,7 @@ def test_format_citations():
 
     assert "https://arxiv.org/abs/1706.03762" in formatted
     assert "https://arxiv.org/abs/2301.07041" in formatted
-    assert "**Sources:**" in formatted
+    assert "Sources:" in formatted  # Updated for emoji format
 
 
 def test_format_citations_empty():

@@ -1,4 +1,4 @@
-"""Gradio chat interface for RAG system with streaming."""
+"""Professional Gradio chat interface for RAG system with streaming."""
 
 import logging
 import re
@@ -28,7 +28,7 @@ def _get_engine() -> CachedRAGEngine:
     return _engine
 
 
-# Custom professional theme
+# Professional custom theme with modern design
 theme = gr.themes.Soft(
     primary_hue="indigo",
     secondary_hue="blue",
@@ -36,10 +36,6 @@ theme = gr.themes.Soft(
     radius_size="lg",
     spacing_size="lg",
     font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "sans-serif"],
-).set(
-    body_background_fill="*neutral_50",
-    block_border_width="0px",
-    block_shadow="*shadow_sm",
 )
 
 
@@ -75,7 +71,7 @@ def format_citations(citations: list[str]) -> str:
     if not citations:
         return ""
 
-    parts = ["\n\n---\n**Sources:**\n"]
+    parts = ["\n\n---\n**📚 Sources:**\n"]
 
     for citation in citations:
         # Extract arxiv ID from citation
@@ -141,7 +137,7 @@ def query_paper_stream(
         retrieved = engine.base_engine.retriever.retrieve(message)
 
         if not retrieved:
-            yield "No relevant information found in the papers."
+            yield "🔍 No relevant information found in the papers."
             return
 
         # Step 2: Rerank
@@ -172,7 +168,7 @@ def query_paper_stream(
             engine._cache[key] = (time.time(), final_result_to_cache)
             # Eviction logic
             if len(engine._cache) > engine.max_cache_size:
-                oldest_key = min(engine._cache, key=lambda k: self._cache[k][0])
+                oldest_key = min(engine._cache, key=lambda k: engine._cache[k][0])
                 del engine._cache[oldest_key]
                 logger.debug(f"Cache EVICTED: {len(engine._cache)}/{engine.max_cache_size} entries")
 
@@ -187,17 +183,19 @@ def query_paper_stream(
         yield error_msg
 
 
-# Example questions
+# Professional example questions with clear, helpful prompts
 examples = [
     "What is transformer architecture?",
     "Explain reinforcement learning",
     "How do diffusion models work?",
     "What is attention mechanism?",
+    "What is backpropagation in neural networks?",
+    "How does batch normalization work?",
 ]
 
 
 def create_interface() -> gr.ChatInterface:
-    """Create and return the Gradio ChatInterface.
+    """Create and return the professional Gradio ChatInterface.
 
     Returns:
         Gradio ChatInterface
@@ -206,8 +204,9 @@ def create_interface() -> gr.ChatInterface:
         fn=query_paper_stream,
         title="📚 ArXiv Research Assistant",
         description=(
-            "Ask questions about machine learning research papers. "
-            "I'll search through the database and provide answers with citations."
+            "### Ask questions about machine learning research papers\n\n"
+            "I'll search through the database and provide answers with **citations**. "
+            "Powered by hybrid search, Cohere Rerank v3, and Claude 3.5 Sonnet."
         ),
         examples=examples,
         cache_examples=False,
@@ -237,6 +236,7 @@ def launch(
         server_port=server_port,
         share=share,
         show_error=True,
+        theme=theme,
     )
 
 
