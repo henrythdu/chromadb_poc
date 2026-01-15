@@ -212,6 +212,7 @@ def create_interface() -> gr.ChatInterface:
         cache_examples=False,
         save_history=True,
         autofocus=True,
+        chatbot=gr.Chatbot(height="calc(100vh - 250px)"),
     )
 
 
