@@ -39,9 +39,7 @@ class ChromaStore:
 
         # Validate required credentials
         if not all([api_key, tenant, database]):
-            raise ValueError(
-                "ChromaDB credentials must be provided as parameters."
-            )
+            raise ValueError("ChromaDB credentials must be provided as parameters.")
 
         self.collection_name = collection_name
 
@@ -125,7 +123,7 @@ class ChromaStore:
         # Query for documents with this arxiv_id in metadata
         results = collection.get(
             where={"arxiv_id": arxiv_id},
-            limit=1  # Only need to know if at least one exists
+            limit=1,  # Only need to know if at least one exists
         )
 
         exists = len(results.get("ids", [])) > 0
@@ -150,11 +148,15 @@ class ChromaStore:
         # Use the $in operator for batch metadata query
         results = collection.get(
             where={"arxiv_id": {"$in": arxiv_ids}},
-            include=["metadatas"]  # Only fetch metadata for efficiency
+            include=["metadatas"],  # Only fetch metadata for efficiency
         )
 
         # Extract unique arxiv_ids from the metadata of found chunks
-        return {meta["arxiv_id"] for meta in results.get("metadatas", []) if "arxiv_id" in meta}
+        return {
+            meta["arxiv_id"]
+            for meta in results.get("metadatas", [])
+            if "arxiv_id" in meta
+        }
 
     def update_paper_metadata(self, arxiv_id: str, new_metadata: dict) -> int:
         """Update metadata for all chunks belonging to a paper.
@@ -170,8 +172,7 @@ class ChromaStore:
 
         # Get all chunk IDs for this paper
         results = collection.get(
-            where={"arxiv_id": arxiv_id},
-            include=["metadatas", "documents"]
+            where={"arxiv_id": arxiv_id}, include=["metadatas", "documents"]
         )
 
         if not results["ids"]:
@@ -180,7 +181,6 @@ class ChromaStore:
 
         # Update each chunk with new metadata
         ids = results["ids"]
-        documents = results["documents"]
         metadatas = []
 
         for old_meta in results["metadatas"]:
@@ -203,7 +203,7 @@ class ChromaStore:
         # Get all documents (may need pagination for large collections)
         results = collection.get(
             limit=10000,  # Adjust based on collection size
-            include=["metadatas"]
+            include=["metadatas"],
         )
 
         # Extract unique arxiv_ids

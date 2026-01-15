@@ -4,6 +4,7 @@
 def test_gradio_app_imports():
     """Test that gradio_app module can be imported."""
     from src.ui.gradio_app import ChatInterface, create_interface, launch
+
     assert ChatInterface is not None
     assert create_interface is not None
     assert launch is not None
@@ -62,7 +63,9 @@ def test_input_sanitization_html():
     from src.ui.gradio_app import ChatInterface
 
     chat = ChatInterface()
-    html_query = "<script>alert('xss')</script>" + "a" * 50  # Add padding to pass length check
+    html_query = (
+        "<script>alert('xss')</script>" + "a" * 50
+    )  # Add padding to pass length check
     is_valid, error_msg, sanitized = chat.validate_input(html_query)
 
     assert not is_valid
@@ -107,7 +110,7 @@ def test_clear_history():
     from src.ui.gradio_app import ChatInterface
 
     chat = ChatInterface()
-    history = [["question1", "answer1"], ["question2", "answer2"]]
+    _ = [["question1", "answer1"], ["question2", "answer2"]]
 
     cleared = chat.clear_history()
 
@@ -116,8 +119,9 @@ def test_clear_history():
 
 def test_create_interface():
     """Test Gradio interface creation."""
-    from src.ui.gradio_app import create_interface
     import gradio as gr
+
+    from src.ui.gradio_app import create_interface
 
     interface = create_interface()
 

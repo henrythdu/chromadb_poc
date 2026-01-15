@@ -1,4 +1,5 @@
 """Fetch paper metadata from ArXiv API."""
+
 import logging
 import time
 from typing import Any, Dict

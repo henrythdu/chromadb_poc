@@ -1,4 +1,5 @@
 """Main entry point for ChromaDB POC."""
+
 import logging
 import sys
 

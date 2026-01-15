@@ -1,10 +1,12 @@
 """Test query engine orchestration."""
+
 from unittest.mock import patch
 
 
 def test_engine_imports():
     """Test that engine module can be imported."""
     from src.retrieval.engine import RAGQueryEngine
+
     assert RAGQueryEngine is not None
 
 

@@ -1,4 +1,5 @@
 """Gradio chat interface for RAG paper Q&A."""
+
 import logging
 from typing import Any
 
@@ -113,14 +114,7 @@ def create_interface() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface
     """
-    with gr.Blocks(
-        title="ArXiv Paper Q&A",
-        theme=gr.themes.Soft(),
-        css="""
-        .chat-container {height: 500px;}
-        .citation-box {background-color: #f0f0f0; padding: 15px; border-radius: 8px;}
-        """
-    ) as interface:
+    with gr.Blocks(title="ArXiv Paper Q&A") as interface:
         gr.Markdown(
             """
             # 📚 ArXiv Research Paper Q&A
@@ -140,8 +134,6 @@ def create_interface() -> gr.Blocks:
                 chatbot = gr.Chatbot(
                     label="Conversation",
                     height=500,
-                    show_copy_button=True,
-                    bubble_full_width=False,
                 )
 
                 with gr.Row():
@@ -160,7 +152,7 @@ def create_interface() -> gr.Blocks:
                 citations_output = gr.Markdown(
                     label="Sources",
                     value="*Ask a question to see sources*",
-                    elem_classes=["citation-box"]
+                    elem_classes=["citation-box"],
                 )
 
         # Example questions
@@ -206,4 +198,9 @@ if __name__ == "__main__":
         server_port=7860,
         share=False,
         show_error=True,
+        theme=gr.themes.Soft(),
+        css="""
+        .chat-container {height: 500px;}
+        .citation-box {background-color: #f0f0f0; padding: 15px; border-radius: 8px;}
+        """,
     )

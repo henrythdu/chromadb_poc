@@ -24,7 +24,9 @@ class DoclingWrapper:
         self.result_type = result_type
         self.enable_ocr = enable_ocr
         self._converter: Any = None
-        logger.info(f"Initialized DoclingWrapper with result_type={result_type}, enable_ocr={enable_ocr}")
+        logger.info(
+            f"Initialized DoclingWrapper with result_type={result_type}, enable_ocr={enable_ocr}"
+        )
 
     def _get_converter(self) -> Any:
         """Lazy load the Docling converter.
@@ -37,8 +39,8 @@ class DoclingWrapper:
         """
         if self._converter is None:
             try:
-                from docling.document_converter import DocumentConverter
                 from docling.datamodel.pipeline_options import PdfPipelineOptions
+                from docling.document_converter import DocumentConverter
 
                 # Configure pipeline options for maximum speed
                 pipeline_options = PdfPipelineOptions()
@@ -57,9 +59,7 @@ class DoclingWrapper:
                 raise
         return self._converter
 
-    def parse_pdf(
-        self, pdf_path: str | Path, max_retries: int = 2
-    ) -> dict[str, Any]:
+    def parse_pdf(self, pdf_path: str | Path, max_retries: int = 2) -> dict[str, Any]:
         """Parse a PDF file to Markdown format.
 
         Args:
@@ -115,9 +115,7 @@ class DoclingWrapper:
 
             except Exception as e:
                 last_error = e
-                logger.warning(
-                    f"Attempt {attempt + 1}/{max_retries} failed: {e}"
-                )
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
                 # Wait before retry to give system time to recover
                 if attempt < max_retries - 1:
                     time.sleep(1)
@@ -174,9 +172,7 @@ class LlamaParserWrapper:
                 raise
         return self._client
 
-    def parse_pdf(
-        self, pdf_path: str | Path, max_retries: int = 3
-    ) -> dict[str, Any]:
+    def parse_pdf(self, pdf_path: str | Path, max_retries: int = 3) -> dict[str, Any]:
         """Parse a PDF file to Markdown format with retry logic.
 
         Args:
@@ -244,9 +240,7 @@ class LlamaParserWrapper:
 
             except Exception as e:
                 last_error = e
-                logger.warning(
-                    f"Attempt {attempt + 1}/{max_retries} failed: {e}"
-                )
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
 
                 # Exponential backoff: wait before retry
                 if attempt < max_retries - 1:

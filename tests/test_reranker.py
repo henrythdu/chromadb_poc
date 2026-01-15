@@ -4,6 +4,7 @@
 def test_reranker_imports():
     """Test that reranker module can be imported."""
     from src.retrieval.reranker import CohereReranker
+
     assert CohereReranker is not None
 
 

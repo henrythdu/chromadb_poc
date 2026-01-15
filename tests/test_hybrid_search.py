@@ -1,4 +1,5 @@
 """Test hybrid search implementation."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 def test_hybrid_search_imports():
     """Test that hybrid_search module can be imported."""
     from src.retrieval.hybrid_search import HybridSearchRetriever
+
     assert HybridSearchRetriever is not None
 
 

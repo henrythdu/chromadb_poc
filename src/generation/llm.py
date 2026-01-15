@@ -1,4 +1,5 @@
 """OpenRouter LLM integration for answer generation."""
+
 import logging
 from typing import Any
 

@@ -4,12 +4,14 @@
 def test_llm_imports():
     """Test that llm module can be imported."""
     from src.generation.llm import OpenRouterLLM
+
     assert OpenRouterLLM is not None
 
 
 def test_prompts_imports():
     """Test that prompts module can be imported."""
     from src.generation.prompts import RAG_PROMPT, build_rag_prompt
+
     assert build_rag_prompt is not None
     assert RAG_PROMPT is not None
 

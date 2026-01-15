@@ -1,4 +1,5 @@
 """Metadata enrichment for documents and chunks."""
+
 import logging
 from typing import Any, Dict
 

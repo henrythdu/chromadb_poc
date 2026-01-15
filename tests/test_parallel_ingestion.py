@@ -1,4 +1,5 @@
 """Test parallel ingestion functionality."""
+
 from unittest.mock import MagicMock, patch
 
 from .test_indexer import test_indexer_imports  # noqa: F401
@@ -87,5 +88,5 @@ def test_parallel_imports(mock_cloud_client):
     )
 
     # Verify method exists
-    assert hasattr(indexer, 'index_batch_parallel')
+    assert hasattr(indexer, "index_batch_parallel")
     assert callable(indexer.index_batch_parallel)

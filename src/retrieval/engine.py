@@ -1,4 +1,5 @@
 """RAG query engine: retrieve → rerank → generate."""
+
 import logging
 from typing import Any
 

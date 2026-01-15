@@ -1,4 +1,5 @@
 """Hybrid search combining vector similarity and BM25 keyword matching."""
+
 import logging
 from typing import Any
 
@@ -116,11 +117,13 @@ class HybridSearchRetriever:
                 # Convert distance to similarity score (higher is better)
                 score = 1.0 - distance if distance is not None else 0.0
 
-                formatted_results.append({
-                    "text": doc,
-                    "metadata": metadata,
-                    "score": score,
-                })
+                formatted_results.append(
+                    {
+                        "text": doc,
+                        "metadata": metadata,
+                        "score": score,
+                    }
+                )
 
         return formatted_results
 
@@ -134,7 +137,9 @@ class HybridSearchRetriever:
             List of retrieved chunks with text, metadata, score
         """
         if self.bm25_retriever is None:
-            logger.warning("BM25 retriever not initialized, falling back to vector search")
+            logger.warning(
+                "BM25 retriever not initialized, falling back to vector search"
+            )
             return self._vector_retrieve(query)
 
         # Tokenize query
@@ -146,7 +151,7 @@ class HybridSearchRetriever:
         scores = self.bm25_retriever.get_scores(tokenized_query)
 
         # Get top-k indices
-        top_indices = np.argsort(scores)[::-1][:self.top_k]
+        top_indices = np.argsort(scores)[::-1][: self.top_k]
 
         # Get all documents to retrieve metadata
         # Note: BM25 only gives us document indices, we need to fetch from Chroma
@@ -157,12 +162,14 @@ class HybridSearchRetriever:
                 # Normalize score to 0-1 range (approximately)
                 # BM25 scores can vary widely, so we use sigmoid-like normalization
                 normalized_score = 1.0 / (1.0 + np.exp(-scores[idx] / 10))
-                results.append({
-                    "text": self.bm25_corpus[idx],
-                    "metadata": {"bm25_index": int(idx)},
-                    "score": float(normalized_score),
-                    "bm25_index": int(idx),
-                })
+                results.append(
+                    {
+                        "text": self.bm25_corpus[idx],
+                        "metadata": {"bm25_index": int(idx)},
+                        "score": float(normalized_score),
+                        "bm25_index": int(idx),
+                    }
+                )
 
         return results
 
@@ -227,7 +234,7 @@ class HybridSearchRetriever:
 
         # Return top-k results
         final_results = []
-        for item in sorted_results[:self.top_k]:
+        for item in sorted_results[: self.top_k]:
             result = item["result"].copy()
             result["rrf_score"] = item["rrf_score"]
             result["vector_rank"] = item["vector_rank"]

@@ -1,10 +1,12 @@
 """Test ingestion indexer pipeline."""
+
 from unittest.mock import MagicMock, patch
 
 
 def test_indexer_imports():
     """Test that indexer can be imported."""
     from src.ingestion.indexer import IngestionIndexer
+
     assert IngestionIndexer is not None
 
 

@@ -1,4 +1,5 @@
 """Document chunking using LlamaIndex node parsers."""
+
 import logging
 from typing import Any, Dict, List
 
@@ -59,13 +60,17 @@ class DocumentChunker:
                 **metadata,
                 "chunk_index": idx,
                 # Extract section from node metadata if available
-                "section": node.metadata.get("header", metadata.get("section", "Unknown")),
+                "section": node.metadata.get(
+                    "header", metadata.get("section", "Unknown")
+                ),
             }
 
-            chunks.append({
-                "text": node.text,
-                "metadata": chunk_metadata,
-            })
+            chunks.append(
+                {
+                    "text": node.text,
+                    "metadata": chunk_metadata,
+                }
+            )
 
         logger.info(f"Chunked into {len(chunks)} chunks")
         return chunks
@@ -95,9 +100,7 @@ class DocumentChunker:
         arxiv_id = chunk["metadata"].get("arxiv_id", "Unknown")
         section = chunk["metadata"].get("section", "Unknown")
 
-        header = (
-            f"[Document: {title} | arxiv:{arxiv_id} | Section: {section}]"
-        )
+        header = f"[Document: {title} | arxiv:{arxiv_id} | Section: {section}]"
 
         enriched["text"] = f"{header}\n\n{chunk['text']}"
         enriched["metadata"] = enriched_metadata

@@ -1,4 +1,5 @@
 """Gradio chat interface for RAG system."""
+
 import html
 import logging
 import os
@@ -38,13 +39,15 @@ class ChatInterface:
 
         try:
             # Validate required keys
-            if not all([
-                self.chroma_api_key,
-                self.chroma_tenant,
-                self.chroma_database,
-                self.cohere_api_key,
-                self.openrouter_api_key,
-            ]):
+            if not all(
+                [
+                    self.chroma_api_key,
+                    self.chroma_tenant,
+                    self.chroma_database,
+                    self.cohere_api_key,
+                    self.openrouter_api_key,
+                ]
+            ):
                 raise ValueError(
                     "Missing required API keys. Please check your .env file."
                 )
@@ -83,7 +86,7 @@ class ChatInterface:
             return False, "Query must be less than 500 characters.", ""
 
         # Sanitize input - remove HTML/XML tags
-        sanitized = re.sub(r'<[^>]+>', '', query)
+        sanitized = re.sub(r"<[^>]+>", "", query)
 
         # Check if HTML tags were present (potential injection)
         if len(sanitized) < len(query):
@@ -91,7 +94,7 @@ class ChatInterface:
             return False, "Invalid input: please use plain text only.", ""
 
         # Remove excessive whitespace
-        sanitized = ' '.join(sanitized.split())
+        sanitized = " ".join(sanitized.split())
 
         return True, "", sanitized
 
@@ -112,13 +115,15 @@ class ChatInterface:
         for citation in citations:
             # Extract arxiv ID from citation
             # Format: "Author et al. (arxiv:1234.56789, page X)"
-            match = re.search(r'arxiv:(\d+\.\d+)', citation)
+            match = re.search(r"arxiv:(\d+\.\d+)", citation)
             # Escape citation to prevent XSS
             safe_citation = html.escape(citation)
             if match:
                 arxiv_id = match.group(1)
                 url = f"https://arxiv.org/abs/{arxiv_id}"
-                html_parts.append(f'<li><a href="{url}" target="_blank">{safe_citation}</a></li>')
+                html_parts.append(
+                    f'<li><a href="{url}" target="_blank">{safe_citation}</a></li>'
+                )
             else:
                 html_parts.append(f"<li>{safe_citation}</li>")
 

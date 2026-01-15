@@ -123,9 +123,13 @@ def test_download_papers_with_no_results():
             # Mock the search to return no results
             mock_search = MagicMock()
             mock_search.results = []
-            mock_client.return_value.__enter__.return_value.search.return_value = mock_search
+            mock_client.return_value.__enter__.return_value.search.return_value = (
+                mock_search
+            )
 
-            papers = downloader.download_papers(query="nonexistentqueryxyz123", max_results=5)
+            papers = downloader.download_papers(
+                query="nonexistentqueryxyz123", max_results=5
+            )
 
             # Should return empty list
             assert papers == []

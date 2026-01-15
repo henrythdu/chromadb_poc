@@ -1,4 +1,5 @@
 """Cohere Rerank API integration for result filtering."""
+
 import logging
 from typing import Any
 
@@ -68,11 +69,13 @@ class CohereReranker:
 
             results = []
             for result in response.results:
-                results.append({
-                    "index": result.index,
-                    "text": documents[result.index],
-                    "relevance_score": result.relevance_score,
-                })
+                results.append(
+                    {
+                        "index": result.index,
+                        "text": documents[result.index],
+                        "relevance_score": result.relevance_score,
+                    }
+                )
 
             logger.info(f"Reranked {len(documents)} → {len(results)} results")
             return results

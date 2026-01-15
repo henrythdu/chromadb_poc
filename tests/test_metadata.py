@@ -28,11 +28,13 @@ def test_chunk_metadata():
 
     builder = MetadataBuilder()
 
-    doc_metadata = builder.build_document_metadata({
-        "arxiv_id": "2301.07041",
-        "title": "Test Paper",
-        "authors": ["Author One"],
-    })
+    doc_metadata = builder.build_document_metadata(
+        {
+            "arxiv_id": "2301.07041",
+            "title": "Test Paper",
+            "authors": ["Author One"],
+        }
+    )
 
     chunk_metadata = builder.build_chunk_metadata(
         doc_metadata=doc_metadata,

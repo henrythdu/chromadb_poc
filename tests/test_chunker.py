@@ -4,6 +4,7 @@
 def test_chunker_imports():
     """Test that chunker module can be imported."""
     from src.ingestion.chunker import DocumentChunker
+
     assert DocumentChunker is not None
 
 
@@ -11,10 +12,7 @@ def test_chunker_initialization():
     """Test DocumentChunker initialization."""
     from src.ingestion.chunker import DocumentChunker
 
-    chunker = DocumentChunker(
-        chunk_size=800,
-        chunk_overlap=100
-    )
+    chunker = DocumentChunker(chunk_size=800, chunk_overlap=100)
 
     assert chunker.chunk_size == 800
     assert chunker.chunk_overlap == 100
@@ -28,9 +26,12 @@ def test_chunk_markdown():
     chunker = DocumentChunker(chunk_size=200, chunk_overlap=50)
 
     # Create longer markdown content that will exceed chunk_size
-    long_content = """
+    long_content = (
+        """
     This is detailed content that discusses various aspects of machine learning and neural networks.
-    """ * 50  # Repeat to create enough content for multiple chunks
+    """
+        * 50
+    )  # Repeat to create enough content for multiple chunks
 
     markdown = f"""
     # Introduction
@@ -51,7 +52,7 @@ def test_chunk_markdown():
         metadata={
             "document_id": "test123",
             "title": "Test Paper",
-        }
+        },
     )
 
     assert len(chunks) > 1
@@ -79,7 +80,7 @@ def test_metadata_enrichment():
             **base_metadata,
             "chunk_index": 0,
             "page_number": 1,
-        }
+        },
     }
 
     # Test enrich_metadata method

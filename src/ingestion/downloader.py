@@ -26,9 +26,13 @@ class ArxivDownloader:
         self.download_dir = Path(download_dir)
         self.max_results = max_results
         self.download_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Initialized ArxivDownloader with dir={self.download_dir}, max_results={max_results}")
+        logger.info(
+            f"Initialized ArxivDownloader with dir={self.download_dir}, max_results={max_results}"
+        )
 
-    def download_papers(self, query: str, max_results: int | None = None) -> list[dict[str, Any]]:
+    def download_papers(
+        self, query: str, max_results: int | None = None
+    ) -> list[dict[str, Any]]:
         """Download papers from ArXiv based on a search query.
 
         Args:
@@ -74,7 +78,9 @@ class ArxivDownloader:
                 # Continue with next paper
                 continue
 
-        logger.info(f"Successfully downloaded {len(papers)} papers, {failed_count} failed")
+        logger.info(
+            f"Successfully downloaded {len(papers)} papers, {failed_count} failed"
+        )
         return papers
 
     def _extract_metadata(self, result: arxiv.Result) -> dict[str, Any]:
@@ -96,7 +102,9 @@ class ArxivDownloader:
             "arxiv_id": arxiv_id,
             "title": result.title,
             "authors": authors,
-            "published_date": result.published.strftime("%Y-%m-%dT%H:%M:%SZ") if result.published else "",
+            "published_date": result.published.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if result.published
+            else "",
             "pdf_url": result.pdf_url,
             "summary": result.summary,
         }
@@ -125,7 +133,9 @@ class ArxivDownloader:
             result.download_pdf(dirpath=str(self.download_dir), filename=filename)
             logger.info(f"Successfully downloaded PDF to {pdf_path}")
         except Exception as e:
-            logger.error(f"Failed to download PDF for {paper['arxiv_id']}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to download PDF for {paper['arxiv_id']}: {e}", exc_info=True
+            )
             raise
 
         return pdf_path

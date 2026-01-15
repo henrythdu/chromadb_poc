@@ -1,4 +1,5 @@
 """Orchestrate ingestion pipeline: parse → chunk → embed → store."""
+
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -43,7 +44,9 @@ class IngestionIndexer:
         else:
             logger.info("Using Docling (local, free)")
             self.parser = DoclingWrapper()
-        self.chunker = DocumentChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.chunker = DocumentChunker(
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         self.metadata_builder = MetadataBuilder()
         self.chroma = ChromaStore(
             api_key=chroma_api_key,
@@ -70,7 +73,9 @@ class IngestionIndexer:
         """
         arxiv_id = metadata.get("arxiv_id")
         if not arxiv_id or not str(arxiv_id).strip():
-            logger.error(f"Cannot index paper, arxiv_id is missing or blank from metadata. PDF: {pdf_path}")
+            logger.error(
+                f"Cannot index paper, arxiv_id is missing or blank from metadata. PDF: {pdf_path}"
+            )
             return {
                 "status": "error",
                 "error": "Missing or blank arxiv_id in metadata",
@@ -152,7 +157,9 @@ class IngestionIndexer:
 
             # Validate pdf_path exists
             if pdf_path is None:
-                logger.error(f"Missing file_path for paper {metadata.get('arxiv_id', 'unknown')}")
+                logger.error(
+                    f"Missing file_path for paper {metadata.get('arxiv_id', 'unknown')}"
+                )
                 results["failed"] += 1
                 continue
 
@@ -165,7 +172,9 @@ class IngestionIndexer:
                 results["skipped"] += 1
             else:
                 results["failed"] += 1
-                logger.error(f"Failed to index {metadata.get('arxiv_id')}: {result.get('error')}")
+                logger.error(
+                    f"Failed to index {metadata.get('arxiv_id')}: {result.get('error')}"
+                )
 
         return results
 
@@ -212,10 +221,14 @@ class IngestionIndexer:
         if skip_existing and valid_papers:
             all_ids = [p.get("arxiv_id") for p in valid_papers if p.get("arxiv_id")]
             existing_ids = self.chroma.get_existing_paper_ids(all_ids)
-            logger.info(f"Pre-flight check: {len(existing_ids)} papers already indexed, will skip")
+            logger.info(
+                f"Pre-flight check: {len(existing_ids)} papers already indexed, will skip"
+            )
 
             # Filter out existing papers
-            papers_to_process = [p for p in valid_papers if p.get("arxiv_id") not in existing_ids]
+            papers_to_process = [
+                p for p in valid_papers if p.get("arxiv_id") not in existing_ids
+            ]
             results["skipped"] = len(existing_ids)
 
         logger.info(
