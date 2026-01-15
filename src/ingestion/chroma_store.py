@@ -7,6 +7,8 @@ try:
 except ImportError:
     chromadb = None
 
+from src.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -199,17 +201,36 @@ class ChromaStore:
             Sorted list of unique arxiv_ids
         """
         collection = self._get_or_create_collection()
-
-        # Get all documents (may need pagination for large collections)
-        results = collection.get(
-            limit=10000,  # Adjust based on collection size
-            include=["metadatas"],
-        )
-
-        # Extract unique arxiv_ids
         arxiv_ids = set()
-        for meta in results.get("metadatas", []):
-            if "arxiv_id" in meta:
-                arxiv_ids.add(meta["arxiv_id"])
+
+        # Use pagination to avoid quota limit (max 300 per request)
+        offset = 0
+        batch_size = settings.chroma_batch_size
+
+        while True:
+            results = collection.get(
+                limit=batch_size,
+                offset=offset,
+                include=["metadatas"],
+            )
+
+            # Extract arxiv_ids from this batch
+            batch_ids = results.get("ids", [])
+            if not batch_ids:
+                break
+
+            for meta in results.get("metadatas", []):
+                if "arxiv_id" in meta:
+                    arxiv_ids.add(meta["arxiv_id"])
+
+            logger.info(
+                f"Fetched {len(batch_ids)} chunks (offset={offset}, total unique={len(arxiv_ids)})"
+            )
+
+            # If we got fewer than requested, we've reached the end
+            if len(batch_ids) < batch_size:
+                break
+
+            offset += batch_size
 
         return sorted(list(arxiv_ids))

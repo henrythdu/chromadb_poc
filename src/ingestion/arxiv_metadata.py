@@ -42,14 +42,25 @@ class ArxivMetadataFetcher:
                 logger.warning(f"No metadata found for {arxiv_id}")
                 return self._empty_metadata(arxiv_id)
 
+            # Handle categories - newer arxiv library returns strings directly
+            categories = []
+            for cat in result.categories:
+                if hasattr(cat, "term"):
+                    categories.append(cat.term)
+                else:
+                    # Category is already a string
+                    categories.append(str(cat))
+
             return {
                 "arxiv_id": arxiv_id,
                 "title": result.title,
-                "authors": [author.name for author in result.authors],
+                "authors": ", ".join(
+                    [author.name for author in result.authors]
+                ),  # Convert to string
                 "published_date": result.published.strftime("%Y-%m-%d"),
                 "pdf_url": result.pdf_url,
                 "summary": result.summary.replace("\n", " "),  # Remove newlines
-                "categories": [cat.term for cat in result.categories],
+                "categories": ", ".join(categories),  # Convert to string
                 "doi": result.doi if result.doi else "",
             }
 
@@ -85,10 +96,10 @@ class ArxivMetadataFetcher:
         return {
             "arxiv_id": arxiv_id,
             "title": f"Paper {arxiv_id}",
-            "authors": [],
+            "authors": "",  # Empty string instead of list
             "published_date": "",
             "pdf_url": f"https://arxiv.org/pdf/{arxiv_id}.pdf",
             "summary": "",
-            "categories": [],
+            "categories": "",  # Empty string instead of list
             "doi": "",
         }

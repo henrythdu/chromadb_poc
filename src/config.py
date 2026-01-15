@@ -16,6 +16,8 @@ class Settings(BaseSettings):
 
     # ChromaDB Cloud settings
     chroma_host: str = "https://api.trychroma.cloud"
+    chroma_quota_limit: int = 300  # Max items per request
+    chroma_batch_size: int = 250  # Stay under quota limit
 
     model_config = SettingsConfigDict(
         env_file=".env",
