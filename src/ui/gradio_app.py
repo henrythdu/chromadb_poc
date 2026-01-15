@@ -92,24 +92,22 @@ def format_citations(citations: list[str]) -> str:
 
 def query_paper_stream(
     message: str,
-    history: list[dict],
-) -> tuple[str, list[dict]]:
+    history: list[tuple[str, str]],
+):
     """Process a user query through the RAG pipeline with streaming.
 
     Args:
         message: User message
-        history: Conversation history (messages format)
+        history: Conversation history (list of tuples)
 
-    Returns:
-        Tuple of (empty_string, updated_history)
+    Yields:
+        Assistant response string (streaming)
     """
     # Validate input
     is_valid, error_msg = validate_input(message)
     if not is_valid:
-        return "", history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": f"⚠️ {error_msg}"}
-        ]
+        yield f"⚠️ {error_msg}"
+        return
 
     try:
         engine = _get_engine()
@@ -132,11 +130,8 @@ def query_paper_stream(
             citations = cached_result.get("citations", [])
             if citations:
                 final_answer += format_citations(citations)
-
-            return "", history + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": final_answer}
-            ]
+            yield final_answer
+            return
 
         # Cache miss - increment counter
         with engine._lock:
@@ -146,32 +141,25 @@ def query_paper_stream(
         retrieved = engine.base_engine.retriever.retrieve(message)
 
         if not retrieved:
-            return "", history + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": "No relevant information found in the papers."}
-            ]
+            yield "No relevant information found in the papers."
+            return
 
         # Step 2: Rerank
         reranked = engine.base_engine.reranker.rerank_results(message, retrieved)
 
         # Step 3: Stream the LLM response
-        # Add user message and empty assistant message to history
-        history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": ""})
-
         full_answer = ""
         for chunk in engine.base_engine.llm.answer_question_stream(message, reranked):
             full_answer = chunk
-            # Update last message in-place for efficiency
-            history[-1]["content"] = full_answer
-            yield "", history
+            yield full_answer
 
         # Step 4: Add citations
         citations = engine.base_engine._extract_citations(reranked)
 
         if citations:
             citation_text = format_citations(citations)
-            history[-1]["content"] += citation_text
+            full_answer += citation_text
+            yield full_answer
 
         # Store result in cache
         final_result_to_cache = {
@@ -184,27 +172,19 @@ def query_paper_stream(
             engine._cache[key] = (time.time(), final_result_to_cache)
             # Eviction logic
             if len(engine._cache) > engine.max_cache_size:
-                oldest_key = min(engine._cache, key=lambda k: engine._cache[k][0])
+                oldest_key = min(engine._cache, key=lambda k: self._cache[k][0])
                 del engine._cache[oldest_key]
                 logger.debug(f"Cache EVICTED: {len(engine._cache)}/{engine.max_cache_size} entries")
-
-        yield "", history
 
     except ValueError as e:
         error_msg = f"⚠️ Configuration Error: {str(e)}"
         logger.error(f"Configuration error: {e}")
-        return "", history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": error_msg}
-        ]
+        yield error_msg
 
     except Exception as e:
         error_msg = f"❌ Error: {str(e)}"
         logger.error(f"Query processing error: {e}")
-        return "", history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": error_msg}
-        ]
+        yield error_msg
 
 
 # Example questions
