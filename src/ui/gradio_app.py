@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -12,6 +13,19 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+# Initialize engine once at module load time (thread-safe singleton)
+logger.info("Initializing RAG engine...")
+_engine: CachedRAGEngine | None = None
+
+
+def _get_engine() -> CachedRAGEngine:
+    """Get or create the RAG engine instance (thread-safe singleton)."""
+    global _engine
+    if _engine is None:
+        _engine = CachedRAGEngine()
+        logger.info("RAG engine initialized")
+    return _engine
 
 
 # Custom professional theme
@@ -56,7 +70,7 @@ def format_citations(citations: list[str]) -> str:
         citations: List of citation strings
 
     Returns:
-        Formatted HTML string with links
+        Formatted markdown string with links
     """
     if not citations:
         return ""
@@ -92,49 +106,105 @@ def query_paper_stream(
     # Validate input
     is_valid, error_msg = validate_input(message)
     if not is_valid:
-        return "", history + [{"role": "user", "content": message},
-                             {"role": "assistant", "content": f"⚠️ {error_msg}"}]
+        return "", history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": f"⚠️ {error_msg}"}
+        ]
 
     try:
-        # Initialize cached engine on first use
-        if not hasattr(query_paper_stream, "engine"):
-            query_paper_stream.engine = CachedRAGEngine()
-            logger.info("RAG engine initialized")
+        engine = _get_engine()
 
-        # Stream the response
+        # Check cache first for potential hit
+        key = engine._cache_key(message)
+        cached_result = None
+
+        with engine._lock:
+            if key in engine._cache:
+                timestamp, result = engine._cache[key]
+                if (time.time() - timestamp) < engine.cache_ttl_seconds:
+                    engine._cache_hits += 1
+                    cached_result = result
+                    logger.info(f"Cache HIT for: {message[:50]}...")
+
+        # If cache hit, return immediately (no streaming needed)
+        if cached_result:
+            final_answer = cached_result["answer"]
+            citations = cached_result.get("citations", [])
+            if citations:
+                final_answer += format_citations(citations)
+
+            return "", history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": final_answer}
+            ]
+
+        # Cache miss - increment counter
+        with engine._lock:
+            engine._cache_misses += 1
+
+        # Step 1: Retrieve chunks
+        retrieved = engine.base_engine.retriever.retrieve(message)
+
+        if not retrieved:
+            return "", history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": "No relevant information found in the papers."}
+            ]
+
+        # Step 2: Rerank
+        reranked = engine.base_engine.reranker.rerank_results(message, retrieved)
+
+        # Step 3: Stream the LLM response
+        # Add user message and empty assistant message to history
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": ""})
+
         full_answer = ""
-        for chunk in query_paper_stream.engine.base_engine.llm.answer_question_stream(
-            message, []
-        ):
+        for chunk in engine.base_engine.llm.answer_question_stream(message, reranked):
             full_answer = chunk
-            yield "", history + [{"role": "user", "content": message},
-                                {"role": "assistant", "content": full_answer}]
+            # Update last message in-place for efficiency
+            history[-1]["content"] = full_answer
+            yield "", history
 
-        # Get the full result with citations
-        result = query_paper_stream.engine.query(message, use_rerank=True)
-        citations = result.get("citations", [])
+        # Step 4: Add citations
+        citations = engine.base_engine._extract_citations(reranked)
 
-        # Add citation links if available
         if citations:
             citation_text = format_citations(citations)
-            final_answer = result["answer"] + citation_text
-        else:
-            final_answer = result["answer"]
+            history[-1]["content"] += citation_text
 
-        yield "", history + [{"role": "user", "content": message},
-                            {"role": "assistant", "content": final_answer}]
+        # Store result in cache
+        final_result_to_cache = {
+            "answer": full_answer,
+            "citations": citations,
+            "sources": [r["metadata"] for r in reranked]
+        }
+
+        with engine._lock:
+            engine._cache[key] = (time.time(), final_result_to_cache)
+            # Eviction logic
+            if len(engine._cache) > engine.max_cache_size:
+                oldest_key = min(engine._cache, key=lambda k: engine._cache[k][0])
+                del engine._cache[oldest_key]
+                logger.debug(f"Cache EVICTED: {len(engine._cache)}/{engine.max_cache_size} entries")
+
+        yield "", history
 
     except ValueError as e:
         error_msg = f"⚠️ Configuration Error: {str(e)}"
         logger.error(f"Configuration error: {e}")
-        return "", history + [{"role": "user", "content": message},
-                             {"role": "assistant", "content": error_msg}]
+        return "", history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": error_msg}
+        ]
 
     except Exception as e:
         error_msg = f"❌ Error: {str(e)}"
         logger.error(f"Query processing error: {e}")
-        return "", history + [{"role": "user", "content": message},
-                             {"role": "assistant", "content": error_msg}]
+        return "", history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": error_msg}
+        ]
 
 
 # Example questions
@@ -154,18 +224,15 @@ def create_interface() -> gr.ChatInterface:
     """
     return gr.ChatInterface(
         fn=query_paper_stream,
-        type="messages",
         title="📚 ArXiv Research Assistant",
         description=(
             "Ask questions about machine learning research papers. "
             "I'll search through the database and provide answers with citations."
         ),
         examples=examples,
-        theme=theme,
         cache_examples=False,
         save_history=True,
         autofocus=True,
-        fill_height=True,
     )
 
 

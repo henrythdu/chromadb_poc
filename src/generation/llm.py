@@ -64,6 +64,7 @@ class OpenRouterLLM:
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens or self.max_tokens,
                 temperature=temperature or self.temperature,
+                timeout=30.0,
             )
 
             return response.choices[0].message.content
@@ -91,7 +92,6 @@ class OpenRouterLLM:
         prompt = build_rag_prompt(query, context_chunks)
 
         return self.generate(prompt)
-
 
     def answer_question_stream(
         self,
@@ -122,6 +122,7 @@ class OpenRouterLLM:
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=True,
+                timeout=30.0,
             )
 
             full_response = ""

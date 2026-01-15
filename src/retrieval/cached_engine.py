@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import threading
 import time
 from typing import Any
 
@@ -37,6 +38,9 @@ class CachedRAGEngine:
         self._cache_hits = 0
         self._cache_misses = 0
 
+        # Lock for thread-safe cache operations
+        self._lock = threading.Lock()
+
     def _cache_key(self, query: str) -> str:
         """Generate cache key from query.
 
@@ -66,44 +70,49 @@ class CachedRAGEngine:
         key = self._cache_key(question)
         current_time = time.time()
 
-        # Check cache
-        if key in self._cache:
-            timestamp, result = self._cache[key]
-            age_seconds = current_time - timestamp
+        # Check cache with lock
+        with self._lock:
+            if key in self._cache:
+                timestamp, result = self._cache[key]
+                age_seconds = current_time - timestamp
 
-            if age_seconds < self.cache_ttl_seconds:
-                self._cache_hits += 1
-                cache_hit_rate = self._cache_hits / (self._cache_hits + self._cache_misses)
-                logger.info(
-                    f"Cache HIT: '{question[:50]}...' "
-                    f"(age: {age_seconds:.0f}s, hit rate: {cache_hit_rate:.1%})"
-                )
-                return result
-            else:
-                # Cache expired, remove it
-                logger.debug(f"Cache EXPIRED: '{question[:50]}...'")
-                del self._cache[key]
+                if age_seconds < self.cache_ttl_seconds:
+                    self._cache_hits += 1
+                    cache_hit_rate = self._cache_hits / (self._cache_hits + self._cache_misses)
+                    logger.info(
+                        f"Cache HIT: '{question[:50]}...' "
+                        f"(age: {age_seconds:.0f}s, hit rate: {cache_hit_rate:.1%})"
+                    )
+                    return result
+                else:
+                    # Cache expired, remove it
+                    logger.debug(f"Cache EXPIRED: '{question[:50]}...'")
+                    del self._cache[key]
 
-        # Cache miss - run query
-        self._cache_misses += 1
+            # Cache miss - increment counter
+            self._cache_misses += 1
+
+        # Run query outside of lock (I/O operation)
         result = self.base_engine.query(question, use_rerank)
 
-        # Store in cache
-        self._cache[key] = (current_time, result)
+        # Store in cache with lock
+        with self._lock:
+            self._cache[key] = (current_time, result)
 
-        # LRU eviction if over limit
-        if len(self._cache) > self.max_cache_size:
-            oldest_key = min(self._cache, key=lambda k: self._cache[k][0])
-            del self._cache[oldest_key]
-            logger.debug(f"Cache EVICTED: {len(self._cache)}/{self.max_cache_size} entries")
+            # LRU eviction if over limit
+            if len(self._cache) > self.max_cache_size:
+                oldest_key = min(self._cache, key=lambda k: self._cache[k][0])
+                del self._cache[oldest_key]
+                logger.debug(f"Cache EVICTED: {len(self._cache)}/{self.max_cache_size} entries")
 
         return result
 
     def clear_cache(self) -> None:
         """Clear all cached results."""
-        self._cache.clear()
-        self._cache_hits = 0
-        self._cache_misses = 0
+        with self._lock:
+            self._cache.clear()
+            self._cache_hits = 0
+            self._cache_misses = 0
         logger.info("Cache cleared")
 
     def get_cache_stats(self) -> dict[str, Any]:
@@ -112,14 +121,15 @@ class CachedRAGEngine:
         Returns:
             Dict with cache size, hits, misses, hit rate
         """
-        total_requests = self._cache_hits + self._cache_misses
-        hit_rate = self._cache_hits / total_requests if total_requests > 0 else 0.0
+        with self._lock:
+            total_requests = self._cache_hits + self._cache_misses
+            hit_rate = self._cache_hits / total_requests if total_requests > 0 else 0.0
 
-        return {
-            "cache_size": len(self._cache),
-            "max_cache_size": self.max_cache_size,
-            "cache_hits": self._cache_hits,
-            "cache_misses": self._cache_misses,
-            "hit_rate": hit_rate,
-            "ttl_seconds": self.cache_ttl_seconds,
-        }
+            return {
+                "cache_size": len(self._cache),
+                "max_cache_size": self.max_cache_size,
+                "cache_hits": self._cache_hits,
+                "cache_misses": self._cache_misses,
+                "hit_rate": hit_rate,
+                "ttl_seconds": self.cache_ttl_seconds,
+            }
