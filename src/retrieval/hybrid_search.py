@@ -91,6 +91,75 @@ class HybridSearchRetriever:
         else:
             return self._vector_retrieve(query)
 
+    def retrieve_with_filter(
+        self,
+        query: str,
+        where: dict[str, Any] | None = None,
+        use_fusion: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Retrieve relevant chunks with metadata filtering.
+
+        Note:
+            When a `where` filter is applied, this method performs vector-only
+            search and does not use hybrid fusion (BM25+RRF). ChromaDB's native
+            query with where clause only supports vector search.
+
+        Args:
+            query: Search query
+            where: Metadata filter dict (e.g., {"arxiv_id": "2601.03764v1"})
+                   See ChromaDB where clause syntax for advanced filters.
+            use_fusion: Ignored when filter is provided; used when where=None
+
+        Returns:
+            List of retrieved chunks with text, metadata, score
+
+        Example:
+            >>> # Get chunks for a specific paper
+            >>> results = retriever.retrieve_with_filter(
+            ...     "attention mechanisms",
+            ...     where={"arxiv_id": "2601.03764v1"}
+            ... )
+        """
+        if where is None:
+            # No filter, use standard retrieve with hybrid search
+            return self.retrieve(query, use_fusion=use_fusion)
+
+        # Vector search with filter (BM25 not available with where clause)
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=self.top_k,
+            where=where,
+        )
+
+        # Format results
+        formatted_results = []
+        if results and results["documents"] and results["documents"][0]:
+            for i, doc in enumerate(results["documents"][0]):
+                metadata = {}
+                if results["metadatas"] and results["metadatas"][0]:
+                    metadata = results["metadatas"][0][i] or {}
+
+                distance = 0.0
+                if results["distances"] and results["distances"][0]:
+                    distance = results["distances"][0][i] or 0.0
+
+                # Convert distance to similarity score (higher is better)
+                score = 1.0 - distance if distance is not None else 0.0
+
+                formatted_results.append(
+                    {
+                        "text": doc,
+                        "metadata": metadata,
+                        "score": score,
+                    }
+                )
+
+        logger.info(
+            f"Filtered retrieval with where={where} returned {len(formatted_results)} chunks"
+        )
+
+        return formatted_results
+
     def _vector_retrieve(self, query: str) -> list[dict[str, Any]]:
         """Retrieve using vector search only.
 

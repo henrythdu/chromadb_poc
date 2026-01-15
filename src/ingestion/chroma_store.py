@@ -1,6 +1,7 @@
 """ChromaDB Cloud connection and store management."""
 
 import logging
+from typing import Any
 
 try:
     import chromadb
@@ -234,3 +235,62 @@ class ChromaStore:
             offset += batch_size
 
         return sorted(list(arxiv_ids))
+
+    def get_chunks_by_arxiv_id(
+        self, arxiv_id: str, include: list[str] | None = None
+    ) -> dict[str, Any]:
+        """Retrieve all chunks for a specific document by arxiv_id.
+
+        Args:
+            arxiv_id: The arxiv ID to retrieve chunks for (e.g., "2601.03764v1")
+            include: What to include in results. Options: ["documents", "metadatas", "embeddings"]
+                     Default: ["documents", "metadatas"]
+
+        Returns:
+            Dict with keys:
+                - ids: List of chunk IDs
+                - documents: List of chunk texts (if included)
+                - metadatas: List of metadata dicts (if included)
+                - embeddings: List of embeddings (if included)
+            Returns empty dict if no chunks found.
+
+        Example:
+            >>> chunks = store.get_chunks_by_arxiv_id("2601.03764v1")
+            >>> for i, (text, meta) in enumerate(zip(chunks["documents"], chunks["metadatas"])):
+            ...     print(f"Chunk {meta['chunk_index']}: {text[:50]}...")
+        """
+        if include is None:
+            include = ["documents", "metadatas"]
+
+        collection = self._get_or_create_collection()
+
+        results = collection.get(
+            where={"arxiv_id": arxiv_id},
+            include=include,
+        )
+
+        if not results.get("ids"):
+            logger.warning(f"No chunks found for arxiv_id: {arxiv_id}")
+            return {}
+
+        # Sort results by chunk_index if metadata is included
+        if "metadatas" in include and results.get("metadatas"):
+            # Create list of indices sorted by chunk_index
+            sorted_indices = sorted(
+                range(len(results["metadatas"])),
+                key=lambda i: results["metadatas"][i].get("chunk_index", 0)
+            )
+
+            # Reorder all lists based on sorted indices
+            for key in ["ids", "documents", "metadatas", "embeddings"]:
+                if key in results and results[key] is not None:
+                    results[key] = [results[key][i] for i in sorted_indices]
+
+            logger.info(
+                f"Retrieved {len(results['ids'])} chunks for {arxiv_id} "
+                f"(sorted by chunk_index)"
+            )
+        else:
+            logger.info(f"Retrieved {len(results['ids'])} chunks for {arxiv_id}")
+
+        return results
