@@ -91,3 +91,46 @@ class OpenRouterLLM:
         prompt = build_rag_prompt(query, context_chunks)
 
         return self.generate(prompt)
+
+
+    def answer_question_stream(
+        self,
+        query: str,
+        context_chunks: list[dict[str, Any]],
+    ):
+        """Answer a question using retrieved context with streaming.
+
+        Args:
+            query: User question
+            context_chunks: Retrieved context chunks
+
+        Yields:
+            Accumulated response text as tokens are generated
+        """
+        from .prompts import build_rag_prompt
+
+        if self.client is None:
+            yield "Error: LLM client not initialized."
+            return
+
+        prompt = build_rag_prompt(query, context_chunks)
+
+        try:
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                stream=True,
+            )
+
+            full_response = ""
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    full_response += token
+                    yield full_response
+
+        except Exception as e:
+            logger.error(f"LLM streaming failed: {e}")
+            yield f"Error: {str(e)}"

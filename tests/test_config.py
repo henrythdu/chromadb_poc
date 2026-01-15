@@ -12,6 +12,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 def test_config_loads_from_env(monkeypatch):
     """Test that config loads from environment variables."""
+    # Clear the config module if it was already imported
+    if "src.config" in sys.modules:
+        del sys.modules["src.config"]
+
     monkeypatch.setenv("LLAMAPARSE_API_KEY", "test_key")
     monkeypatch.setenv("CHROMA_CLOUD_API_KEY", "test_chroma_key")
     monkeypatch.setenv("CHROMA_TENANT", "test_tenant")

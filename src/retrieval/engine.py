@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from ..config import settings
 from ..generation.llm import OpenRouterLLM
 from .hybrid_search import HybridSearchRetriever
 from .reranker import CohereReranker
@@ -15,31 +16,39 @@ class RAGQueryEngine:
 
     def __init__(
         self,
-        chroma_api_key: str,
-        chroma_tenant: str,
-        chroma_database: str,
-        cohere_api_key: str,
-        openrouter_api_key: str,
+        chroma_api_key: str | None = None,
+        chroma_tenant: str | None = None,
+        chroma_database: str | None = None,
+        cohere_api_key: str | None = None,
+        openrouter_api_key: str | None = None,
         collection_name: str = "arxiv_papers_v1",
-        top_k_retrieve: int = 50,
-        top_k_rerank: int = 5,
-        llm_model: str = "anthropic/claude-3.5-sonnet",
+        top_k_retrieve: int | None = None,
+        top_k_rerank: int | None = None,
+        llm_model: str | None = None,
     ):
         """Initialize RAG query engine.
 
         Args:
-            chroma_api_key: Chroma API key
-            chroma_tenant: Chroma Cloud tenant ID
-            chroma_database: Chroma Cloud database name
-            cohere_api_key: Cohere API key
-            openrouter_api_key: OpenRouter API key
+            chroma_api_key: Chroma API key (from settings if None)
+            chroma_tenant: Chroma Cloud tenant ID (from settings if None)
+            chroma_database: Chroma Cloud database name (from settings if None)
+            cohere_api_key: Cohere API key (from settings if None)
+            openrouter_api_key: OpenRouter API key (from settings if None)
             collection_name: Chroma collection name
-            top_k_retrieve: Initial retrieval count
-            top_k_rerank: Final result count after reranking
-            llm_model: LLM model to use
+            top_k_retrieve: Initial retrieval count (from config.toml if None)
+            top_k_rerank: Final result count after reranking (from config.toml if None)
+            llm_model: LLM model to use (from config.toml if None)
         """
-        self.top_k_retrieve = top_k_retrieve
-        self.top_k_rerank = top_k_rerank
+        # Use settings for defaults if not provided
+        self.top_k_retrieve = top_k_retrieve or settings.top_k_retrieve
+        self.top_k_rerank = top_k_rerank or settings.top_k_rerank
+        self.llm_model = llm_model or settings.llm_model
+
+        chroma_api_key = chroma_api_key or settings.chroma_cloud_api_key
+        chroma_tenant = chroma_tenant or settings.chroma_tenant
+        chroma_database = chroma_database or settings.chroma_database
+        cohere_api_key = cohere_api_key or settings.cohere_api_key
+        openrouter_api_key = openrouter_api_key or settings.openrouter_api_key
 
         # Initialize components
         self.retriever = HybridSearchRetriever(
@@ -47,12 +56,12 @@ class RAGQueryEngine:
             chroma_tenant=chroma_tenant,
             chroma_database=chroma_database,
             collection_name=collection_name,
-            top_k=top_k_retrieve,
+            top_k=self.top_k_retrieve,
         )
 
-        self.reranker = CohereReranker(api_key=cohere_api_key, top_n=top_k_rerank)
+        self.reranker = CohereReranker(api_key=cohere_api_key, top_n=self.top_k_rerank)
 
-        self.llm = OpenRouterLLM(api_key=openrouter_api_key, model=llm_model)
+        self.llm = OpenRouterLLM(api_key=openrouter_api_key, model=self.llm_model)
 
     def query(
         self,
