@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from src.ingestion.contract_filename_parser import ParseError, parse_contract_filename
+from src.ingestion.contract_filename_parser import ParseError, parse_contract_filename, parse_contract_path
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -62,3 +62,60 @@ def test_parse_missing_date_raises_error():
 
     with pytest.raises(ParseError):
         parse_contract_filename(filename)
+
+
+def test_parse_contract_path_full():
+    """Test parsing full path including folder structure."""
+    full_path = "/full_contract_pdf/Part_I/Affiliate_Agreements/CreditcardscomInc_20070810_S-1_EX-10.33_362297_EX-10.33_Affiliate Agreement.pdf"
+
+    result = parse_contract_path(full_path)
+
+    assert result["company_name"] == "CreditcardscomInc"
+    assert result["execution_date"] == "2007-08-10"
+    assert result["filing_type"] == "S-1"
+    assert result["exhibit_number"] == "EX-10.33"
+    assert result["accession_number"] == "362297"
+    assert result["contract_type"] == "Affiliate_Agreements"
+    assert result["filename"] == "CreditcardscomInc_20070810_S-1_EX-10.33_362297_EX-10.33_Affiliate Agreement.pdf"
+
+
+def test_parse_contract_path_part_iii():
+    """Test parsing from Part_III folder."""
+    full_path = "full_contract_pdf/Part_III/License_Agreements/ExampleCorp_20200101_10-K_EX-10.1_12345_EX-10.1_License.pdf"
+
+    result = parse_contract_path(full_path)
+
+    assert result["contract_type"] == "License_Agreements"
+    assert result["company_name"] == "ExampleCorp"
+
+
+def test_parse_contract_path_with_co_branding_folder():
+    """Test parsing contract type with underscores."""
+    full_path = "/full_contract_pdf/Part_III/Co_Branding/Company_20220101_8-K_EX-10.1_99999_EX-10.1_Agreement.pdf"
+
+    result = parse_contract_path(full_path)
+
+    assert result["contract_type"] == "Co_Branding"
+
+
+def test_parse_contract_path_invalid_filename():
+    """Test that invalid filename in path raises ParseError."""
+    full_path = "/full_contract_pdf/Part_I/Affiliate_Agreements/Invalid.pdf"
+
+    with pytest.raises(ParseError):
+        parse_contract_path(full_path)
+
+
+def test_parse_contract_path_generates_document_id():
+    """Test that document_id is generated from filename."""
+    import hashlib
+
+    full_path = "/full_contract_pdf/Part_I/Affiliate_Agreements/CreditcardscomInc_20070810_S-1_EX-10.33_362297_EX-10.33_Affiliate Agreement.pdf"
+
+    result = parse_contract_path(full_path)
+
+    assert "document_id" in result
+    # document_id should be SHA256 hash of filename
+    expected_filename = "CreditcardscomInc_20070810_S-1_EX-10.33_362297_EX-10.33_Affiliate Agreement.pdf"
+    expected_id = hashlib.sha256(expected_filename.encode()).hexdigest()
+    assert result["document_id"] == expected_id

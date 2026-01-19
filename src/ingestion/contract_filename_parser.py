@@ -15,6 +15,7 @@ Extracted metadata:
 """
 
 import logging
+import os
 import re
 from datetime import datetime
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "parse_contract_filename",
+    "parse_contract_path",
     "ParseError",
 ]
 
@@ -96,3 +98,56 @@ def parse_contract_filename(filename: str) -> dict:
         "exhibit_number": exhibit_number,
         "accession_number": accession_number,
     }
+
+
+def parse_contract_path(file_path: str) -> dict:
+    """Parse a contract PDF file path and extract all metadata.
+
+    Combines filename parsing with folder structure to extract complete metadata.
+
+    Args:
+        file_path: Full or relative path to the PDF file
+
+    Returns:
+        Dictionary with all metadata including:
+            - All fields from parse_contract_filename()
+            - contract_type: str (extracted from folder name)
+            - filename: str (original filename)
+            - document_id: str (SHA256 hash of filename for uniqueness)
+
+    Raises:
+        ParseError: If filename doesn't match expected pattern
+
+    Example:
+        >>> parse_contract_path("full_contract_pdf/Part_I/Affiliate_Agreements/Company_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf")
+        {
+            "company_name": "Company",
+            "execution_date": "2020-01-01",
+            "filing_type": "S-1",
+            "exhibit_number": "EX-10.1",
+            "accession_number": "12345",
+            "contract_type": "Affiliate_Agreements",
+            "filename": "Company_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf",
+            "document_id": "abc123..."
+        }
+    """
+    import hashlib
+
+    # Extract filename from path
+    filename = os.path.basename(file_path)
+
+    # Parse filename metadata
+    metadata = parse_contract_filename(filename)
+
+    # Extract contract type from parent folder
+    contract_type = os.path.basename(os.path.dirname(file_path))
+    metadata["contract_type"] = contract_type
+
+    # Add original filename
+    metadata["filename"] = filename
+
+    # Generate unique document_id from filename
+    document_id = hashlib.sha256(filename.encode()).hexdigest()
+    metadata["document_id"] = document_id
+
+    return metadata
