@@ -278,7 +278,7 @@ class ChromaStore:
             # Create list of indices sorted by chunk_index
             sorted_indices = sorted(
                 range(len(results["metadatas"])),
-                key=lambda i: results["metadatas"][i].get("chunk_index", 0)
+                key=lambda i: results["metadatas"][i].get("chunk_index", 0),
             )
 
             # Reorder all lists based on sorted indices
