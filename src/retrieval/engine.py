@@ -183,28 +183,31 @@ class RAGQueryEngine:
         self,
         chunks: list[dict[str, Any]],
     ) -> list[str]:
-        """Extract citation strings from chunks.
+        """Extract citation strings from chunks using collection-aware formatter.
 
         Args:
             chunks: Reranked chunks
 
         Returns:
-            List of formatted citations
+            List of formatted citations (arxiv papers have links, contracts have narrative)
         """
-        from ..ingestion.metadata import MetadataBuilder
+        from .citation_formatter import CitationFormatter
 
-        metadata_builder = MetadataBuilder()
+        formatter = CitationFormatter()
         citations = []
         seen = set()
 
         for chunk in chunks:
             metadata = chunk.get("metadata", {})
-            arxiv_id = metadata.get("arxiv_id", "Unknown")
+
+            # Use arxiv_id for papers, document_id for contracts
+            doc_id = metadata.get("arxiv_id") or metadata.get("document_id")
             page = metadata.get("page_number", "?")
 
-            key = f"{arxiv_id}:{page}"
-            if key not in seen:
-                citations.append(metadata_builder.format_citation(metadata))
-                seen.add(key)
+            if doc_id:
+                key = f"{doc_id}:{page}"
+                if key not in seen:
+                    citations.append(formatter.format_citation(metadata))
+                    seen.add(key)
 
         return citations
