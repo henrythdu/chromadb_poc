@@ -41,19 +41,17 @@ class CachedRAGEngine:
         # Lock for thread-safe cache operations
         self._lock = threading.Lock()
 
-    def _cache_key(self, query: str, collection: str = "arxiv_papers_v1") -> str:
-        """Generate cache key including collection name.
+    def _cache_key(self, query: str) -> str:
+        """Generate cache key from query.
 
         Args:
             query: User query string
-            collection: Collection name
 
         Returns:
-            SHA256 hash of normalized query with collection
+            SHA256 hash of normalized query
         """
         normalized = query.lower().strip()
-        key_string = f"{normalized}:{collection}"
-        return hashlib.sha256(key_string.encode()).hexdigest()
+        return hashlib.sha256(normalized.encode()).hexdigest()
 
     def query(
         self,

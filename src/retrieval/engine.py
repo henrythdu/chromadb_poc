@@ -110,104 +110,32 @@ class RAGQueryEngine:
             "sources": [r["metadata"] for r in reranked],
         }
 
-    def query_with_collection(
-        self,
-        question: str,
-        collection_name: str,
-        use_rerank: bool = True,
-    ) -> dict[str, Any]:
-        """Query a specific collection by name.
-
-        Args:
-            question: User question
-            collection_name: Collection name to query ("arxiv_papers_v1" or "contracts")
-            use_rerank: Whether to use reranker
-
-        Returns:
-            Result dict with answer and citations
-
-        Raises:
-            ValueError: If collection_name is not valid
-        """
-        valid_collections = ["arxiv_papers_v1", "contracts"]
-        if collection_name not in valid_collections:
-            raise ValueError(
-                f"Invalid collection: {collection_name}. "
-                f"Valid options: {valid_collections}"
-            )
-
-        logger.info(f"Querying collection: {collection_name}")
-        logger.debug(f"Query: {question}")
-
-        # Create temporary retriever for specified collection
-        retriever = HybridSearchRetriever(
-            chroma_api_key=self.retriever.client._api_key,
-            chroma_tenant=self.retriever.client._tenant,
-            chroma_database=self.retriever.client._database,
-            collection_name=collection_name,
-            top_k=self.top_k_retrieve,
-        )
-
-        # Step 1: Retrieve
-        retrieved = retriever.retrieve(question)
-        logger.info(f"Retrieved {len(retrieved)} chunks from {collection_name}")
-
-        if not retrieved:
-            collection_type = "contracts" if collection_name == "contracts" else "papers"
-            return {
-                "answer": f"No relevant information found in the {collection_type}.",
-                "citations": [],
-                "sources": [],
-            }
-
-        # Step 2: Rerank
-        if use_rerank:
-            reranked = self.reranker.rerank_results(question, retrieved)
-            logger.info(f"Reranked to {len(reranked)} chunks")
-        else:
-            reranked = retrieved[: self.top_k_rerank]
-
-        # Step 3: Generate answer
-        answer = self.llm.answer_question(question, reranked)
-
-        # Step 4: Extract citations
-        citations = self._extract_citations(reranked)
-
-        return {
-            "answer": answer,
-            "citations": citations,
-            "sources": [r["metadata"] for r in reranked],
-        }
-
     def _extract_citations(
         self,
         chunks: list[dict[str, Any]],
     ) -> list[str]:
-        """Extract citation strings from chunks using collection-aware formatter.
+        """Extract citation strings from chunks.
 
         Args:
             chunks: Reranked chunks
 
         Returns:
-            List of formatted citations (arxiv papers have links, contracts have narrative)
+            List of formatted citations
         """
-        from .citation_formatter import CitationFormatter
+        from ..ingestion.metadata import MetadataBuilder
 
-        formatter = CitationFormatter()
+        metadata_builder = MetadataBuilder()
         citations = []
         seen = set()
 
         for chunk in chunks:
             metadata = chunk.get("metadata", {})
-
-            # Use arxiv_id for papers, document_id for contracts
-            doc_id = metadata.get("arxiv_id") or metadata.get("document_id")
+            arxiv_id = metadata.get("arxiv_id", "Unknown")
             page = metadata.get("page_number", "?")
 
-            if doc_id:
-                key = f"{doc_id}:{page}"
-                if key not in seen:
-                    citations.append(formatter.format_citation(metadata))
-                    seen.add(key)
+            key = f"{arxiv_id}:{page}"
+            if key not in seen:
+                citations.append(metadata_builder.format_citation(metadata))
+                seen.add(key)
 
         return citations
