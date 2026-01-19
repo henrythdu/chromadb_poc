@@ -95,13 +95,14 @@ def test_create_interface():
 
     interface = create_interface()
 
-    assert isinstance(interface, gr.ChatInterface)
+    # Phase 4 multi-collection UI uses gr.Blocks instead of ChatInterface
+    assert isinstance(interface, gr.Blocks)
 
 
 def test_query_paper_stream_generator():
     """Test that query_paper_stream is a generator function."""
-    from src.ui.gradio_app import query_paper_stream
-
     import inspect
+
+    from src.ui.gradio_app import query_paper_stream
 
     assert inspect.isgeneratorfunction(query_paper_stream)
