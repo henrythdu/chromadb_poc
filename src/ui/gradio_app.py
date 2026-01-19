@@ -260,7 +260,7 @@ def create_interface() -> gr.Blocks:
             )
 
         # Chat interface
-        chatbot = gr.Chatbot(height="calc(100vh - 350px)", show_copy_button=True)
+        chatbot = gr.Chatbot(height="calc(100vh - 350px)")
         msg = gr.Textbox(
             label="Your Question",
             placeholder="Ask about research papers or contract clauses...",

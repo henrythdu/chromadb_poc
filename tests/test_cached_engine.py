@@ -2,8 +2,6 @@
 
 import time
 
-import pytest
-
 from src.retrieval.cached_engine import CachedRAGEngine
 
 
@@ -20,7 +18,6 @@ def test_cache_hit_returns_same_result(monkeypatch):
     engine = CachedRAGEngine(max_cache_size=10, cache_ttl_seconds=60)
 
     # Mock the base engine to return predictable results
-    original_query = engine.base_engine.query
     call_count = [0]
 
     def mock_query(question, use_rerank=True):
@@ -43,7 +40,7 @@ def test_cache_hit_returns_same_result(monkeypatch):
     assert call_count[0] == 1, "Base engine should only be called once"
 
     # Different query - cache miss
-    result3 = engine.query("What is AI?")
+    engine.query("What is AI?")
 
     assert call_count[0] == 2, "Base engine should be called for different query"
 

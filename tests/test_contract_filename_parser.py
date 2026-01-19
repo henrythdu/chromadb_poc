@@ -185,7 +185,7 @@ def test_parser_class_get_statistics():
         "/full_contract_pdf/Part_II/IP/Company_20210101_10-K_EX-10.1_22222_EX-10.1_IP.pdf",
     ]
 
-    results = parser.parse_batch(filepaths)
+    parser.parse_batch(filepaths)
     stats = parser.get_statistics()
 
     assert stats["total"] == 3
