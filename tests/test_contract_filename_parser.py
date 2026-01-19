@@ -5,7 +5,12 @@ import sys
 
 import pytest
 
-from src.ingestion.contract_filename_parser import ParseError, parse_contract_filename, parse_contract_path
+from src.ingestion.contract_filename_parser import (
+    ContractFilenameParser,
+    ParseError,
+    parse_contract_filename,
+    parse_contract_path,
+)
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -119,3 +124,64 @@ def test_parse_contract_path_generates_document_id():
     expected_filename = "CreditcardscomInc_20070810_S-1_EX-10.33_362297_EX-10.33_Affiliate Agreement.pdf"
     expected_id = hashlib.sha256(expected_filename.encode()).hexdigest()
     assert result["document_id"] == expected_id
+
+
+def test_parser_class_single_file():
+    """Test ContractFilenameParser class with single file."""
+    parser = ContractFilenameParser()
+    filepath = "/full_contract_pdf/Part_I/Affiliate_Agreements/Company_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf"
+
+    result = parser.parse(filepath)
+
+    assert result["company_name"] == "Company"
+    assert result["contract_type"] == "Affiliate_Agreements"
+
+
+def test_parser_class_batch_process():
+    """Test batch processing multiple files."""
+    parser = ContractFilenameParser()
+    filepaths = [
+        "/full_contract_pdf/Part_I/Affiliate_Agreements/CompanyA_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf",
+        "/full_contract_pdf/Part_II/License_Agreements/CompanyB_20210101_10-K_EX-10.2_67890_EX-10.2_License.pdf",
+        "/full_contract_pdf/Part_III/Co_Branding/CompanyC_20220101_8-K_EX-99.1_11111_EX-99.1_Deal.pdf",
+    ]
+
+    results = parser.parse_batch(filepaths)
+
+    assert len(results) == 3
+    assert results[0]["company_name"] == "CompanyA"
+    assert results[1]["contract_type"] == "License_Agreements"
+    assert results[2]["contract_type"] == "Co_Branding"
+
+
+def test_parser_class_batch_with_invalid_file():
+    """Test batch processing skips invalid files and continues."""
+    parser = ContractFilenameParser()
+    filepaths = [
+        "/full_contract_pdf/Part_I/Affiliate_Agreements/Company_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf",
+        "/invalid/path/Invalid.pdf",  # This should be skipped
+        "/full_contract_pdf/Part_II/IP/Company_20210101_10-K_EX-10.1_22222_EX-10.1_IP_Agreement.pdf",
+    ]
+
+    results = parser.parse_batch(filepaths)
+
+    assert len(results) == 2  # Only valid files parsed
+    assert results[0]["company_name"] == "Company"
+    assert results[1]["contract_type"] == "IP"
+
+
+def test_parser_class_get_statistics():
+    """Test getting parsing statistics."""
+    parser = ContractFilenameParser()
+    filepaths = [
+        "/full_contract_pdf/Part_I/Affiliate_Agreements/Company_20200101_S-1_EX-10.1_12345_EX-10.1_Agreement.pdf",
+        "/invalid.pdf",  # Will fail
+        "/full_contract_pdf/Part_II/IP/Company_20210101_10-K_EX-10.1_22222_EX-10.1_IP.pdf",
+    ]
+
+    results = parser.parse_batch(filepaths)
+    stats = parser.get_statistics()
+
+    assert stats["total"] == 3
+    assert stats["successful"] == 2
+    assert stats["failed"] == 1

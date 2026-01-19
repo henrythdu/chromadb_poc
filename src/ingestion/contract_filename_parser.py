@@ -26,6 +26,7 @@ __all__ = [
     "parse_contract_filename",
     "parse_contract_path",
     "ParseError",
+    "ContractFilenameParser",
 ]
 
 
@@ -151,3 +152,80 @@ def parse_contract_path(file_path: str) -> dict:
     metadata["document_id"] = document_id
 
     return metadata
+
+
+class ContractFilenameParser:
+    """Parser for batch processing contract filenames.
+
+    Tracks statistics and handles errors gracefully for batch operations.
+    """
+
+    def __init__(self):
+        """Initialize the parser with zero statistics."""
+        self._total_processed = 0
+        self._successful_parses = 0
+        self._failed_parses = 0
+
+    def parse(self, file_path: str) -> dict:
+        """Parse a single contract file path.
+
+        Args:
+            file_path: Path to the contract PDF file
+
+        Returns:
+            Metadata dictionary
+
+        Raises:
+            ParseError: If parsing fails
+        """
+        self._total_processed += 1
+        try:
+            result = parse_contract_path(file_path)
+            self._successful_parses += 1
+            return result
+        except ParseError:
+            self._failed_parses += 1
+            raise
+
+    def parse_batch(self, file_paths: list[str]) -> list[dict]:
+        """Parse multiple contract file paths.
+
+        Invalid files are skipped and counted in statistics.
+
+        Args:
+            file_paths: List of paths to contract PDF files
+
+        Returns:
+            List of metadata dictionaries (only for successfully parsed files)
+        """
+        results = []
+
+        for file_path in file_paths:
+            self._total_processed += 1
+            try:
+                result = parse_contract_path(file_path)
+                results.append(result)
+                self._successful_parses += 1
+            except ParseError as e:
+                self._failed_parses += 1
+                logger.warning(f"Skipping invalid file: {file_path} - {e}")
+
+        return results
+
+    def get_statistics(self) -> dict:
+        """Get parsing statistics.
+
+        Returns:
+            Dictionary with keys: total, successful, failed
+        """
+        return {
+            "total": self._total_processed,
+            "successful": self._successful_parses,
+            "failed": self._failed_parses,
+        }
+
+    def reset_statistics(self) -> None:
+        """Reset all statistics to zero."""
+        self._total_processed = 0
+        self._successful_parses = 0
+        self._failed_parses = 0
