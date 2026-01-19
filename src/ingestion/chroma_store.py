@@ -68,8 +68,44 @@ class ChromaStore:
         logger.info(f"Accessed collection: {self.collection_name}")
         return collection
 
+    def get_collection(self, name: str | None = None) -> Any:
+        """Get a collection by name, or default collection if no name provided.
+
+        This method enables dynamic collection access for multi-collection scenarios
+        while maintaining backward compatibility with existing single-collection usage.
+
+        Args:
+            name: Collection name to retrieve. If None, returns the default collection
+                    specified during initialization.
+
+        Returns:
+            ChromaDB collection object
+
+        Raises:
+            ValueError: If name is an empty string
+
+        Example:
+            >>> store = ChromaStore(api_key="...", tenant="...", database="...", collection_name="papers")
+            >>> papers_coll = store.get_collection()  # Gets "papers" (default)
+            >>> contracts_coll = store.get_collection("contracts")  # Gets "contracts" (dynamic)
+        """
+        if name is None:
+            # Use default collection from instance
+            return self._get_or_create_collection()
+
+        if not name or not isinstance(name, str):
+            raise ValueError("Collection name must be a non-empty string")
+
+        collection = self.client.get_or_create_collection(name=name)
+        logger.info(f"Accessed collection: {name}")
+        return collection
+
     def add_documents(
-        self, documents: list[str], metadatas: list[dict], ids: list[str]
+        self,
+        documents: list[str],
+        metadatas: list[dict],
+        ids: list[str],
+        collection_name: str | None = None,
     ):
         """Add or update documents in the collection using upsert.
 
@@ -77,25 +113,46 @@ class ChromaStore:
             documents: List of document texts
             metadatas: List of metadata dictionaries for each document
             ids: List of unique identifiers for each document
+            collection_name: Optional collection name. If None, uses the default
+                           collection specified during initialization.
 
         Note:
             Uses upsert instead of add to enable resumable ingestion.
             Existing documents with the same ID will be updated,
             new documents will be added. No duplicate errors.
-        """
-        collection = self._get_or_create_collection()
-        collection.upsert(documents=documents, metadatas=metadatas, ids=ids)
-        logger.info(f"Upserted {len(documents)} documents to collection")
 
-    def count(self) -> int:
+            When collection_name is specified, documents are added to that collection
+            instead of the default. This enables multi-collection scenarios.
+        """
+        if collection_name is not None:
+            collection = self.get_collection(collection_name)
+        else:
+            collection = self._get_or_create_collection()
+
+        collection.upsert(documents=documents, metadatas=metadatas, ids=ids)
+
+        coll_name = collection_name if collection_name else self.collection_name
+        logger.info(f"Upserted {len(documents)} documents to collection '{coll_name}'")
+
+    def count(self, collection_name: str | None = None) -> int:
         """Get the number of documents in the collection.
+
+        Args:
+            collection_name: Optional collection name to count. If None, uses the default
+                           collection specified during initialization.
 
         Returns:
             Number of documents in the collection
         """
-        collection = self._get_or_create_collection()
+        if collection_name is not None:
+            collection = self.get_collection(collection_name)
+        else:
+            collection = self._get_or_create_collection()
+
         count = collection.count()
-        logger.info(f"Collection {self.collection_name} has {count} documents")
+
+        coll_name = collection_name if collection_name else self.collection_name
+        logger.info(f"Collection '{coll_name}' has {count} documents")
         return count
 
     def test_connection(self) -> bool:
@@ -278,7 +335,7 @@ class ChromaStore:
             # Create list of indices sorted by chunk_index
             sorted_indices = sorted(
                 range(len(results["metadatas"])),
-                key=lambda i: results["metadatas"][i].get("chunk_index", 0)
+                key=lambda i: results["metadatas"][i].get("chunk_index", 0),
             )
 
             # Reorder all lists based on sorted indices
