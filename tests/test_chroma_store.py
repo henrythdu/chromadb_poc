@@ -242,3 +242,115 @@ def test_chroma_connection(mock_api_keys):
     # Verify count (should be at least 2)
     count = store.count()
     assert count >= 2
+
+
+def test_get_collection_dynamic():
+    """Test getting a collection by name dynamically."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        # Mock two different collections
+        mock_arxiv_collection = MagicMock()
+        mock_contracts_collection = MagicMock()
+
+        def mock_get_or_create(name):
+            if name == "arxiv_papers":
+                return mock_arxiv_collection
+            elif name == "contracts":
+                return mock_contracts_collection
+            return MagicMock()
+
+        mock_instance.get_or_create_collection = mock_get_or_create
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="arxiv_papers",
+        )
+
+        # Get arxiv_papers collection (default)
+        arxiv_coll = store.get_collection("arxiv_papers")
+        assert arxiv_coll == mock_arxiv_collection
+
+        # Get contracts collection (dynamic)
+        contracts_coll = store.get_collection("contracts")
+        assert contracts_coll == mock_contracts_collection
+
+
+def test_get_collection_default():
+    """Test that get_collection with no args returns default collection."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        mock_default_collection = MagicMock()
+        mock_instance.get_or_create_collection.return_value = mock_default_collection
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="default_collection",
+        )
+
+        # Get default collection without argument
+        default_coll = store.get_collection()
+        assert default_coll == mock_default_collection
+        assert default_coll == store._get_or_create_collection()  # Same as default
+
+
+def test_get_collection_invalid_input_raises_error():
+    """Test that get_collection raises ValueError for invalid names."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="default_collection",
+        )
+
+        # Test empty string raises ValueError
+        with pytest.raises(ValueError, match="Collection name must be a non-empty string"):
+            store.get_collection("")
+
+        # Test non-string type raises ValueError
+        with pytest.raises(ValueError, match="Collection name must be a non-empty string"):
+            store.get_collection(123)

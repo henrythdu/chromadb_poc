@@ -68,6 +68,38 @@ class ChromaStore:
         logger.info(f"Accessed collection: {self.collection_name}")
         return collection
 
+    def get_collection(self, name: str | None = None) -> Any:
+        """Get a collection by name, or default collection if no name provided.
+
+        This method enables dynamic collection access for multi-collection scenarios
+        while maintaining backward compatibility with existing single-collection usage.
+
+        Args:
+            name: Collection name to retrieve. If None, returns the default collection
+                    specified during initialization.
+
+        Returns:
+            ChromaDB collection object
+
+        Raises:
+            ValueError: If name is an empty string
+
+        Example:
+            >>> store = ChromaStore(api_key="...", tenant="...", database="...", collection_name="papers")
+            >>> papers_coll = store.get_collection()  # Gets "papers" (default)
+            >>> contracts_coll = store.get_collection("contracts")  # Gets "contracts" (dynamic)
+        """
+        if name is None:
+            # Use default collection from instance
+            return self._get_or_create_collection()
+
+        if not name or not isinstance(name, str):
+            raise ValueError("Collection name must be a non-empty string")
+
+        collection = self.client.get_or_create_collection(name=name)
+        logger.info(f"Accessed collection: {name}")
+        return collection
+
     def add_documents(
         self, documents: list[str], metadatas: list[dict], ids: list[str]
     ):
