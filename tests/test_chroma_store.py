@@ -242,3 +242,271 @@ def test_chroma_connection(mock_api_keys):
     # Verify count (should be at least 2)
     count = store.count()
     assert count >= 2
+
+
+def test_get_collection_dynamic():
+    """Test getting a collection by name dynamically."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        # Mock two different collections
+        mock_arxiv_collection = MagicMock()
+        mock_contracts_collection = MagicMock()
+
+        def mock_get_or_create(name):
+            if name == "arxiv_papers":
+                return mock_arxiv_collection
+            elif name == "contracts":
+                return mock_contracts_collection
+            return MagicMock()
+
+        mock_instance.get_or_create_collection = mock_get_or_create
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="arxiv_papers",
+        )
+
+        # Get arxiv_papers collection (default)
+        arxiv_coll = store.get_collection("arxiv_papers")
+        assert arxiv_coll == mock_arxiv_collection
+
+        # Get contracts collection (dynamic)
+        contracts_coll = store.get_collection("contracts")
+        assert contracts_coll == mock_contracts_collection
+
+
+def test_get_collection_default():
+    """Test that get_collection with no args returns default collection."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        mock_default_collection = MagicMock()
+        mock_instance.get_or_create_collection.return_value = mock_default_collection
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="default_collection",
+        )
+
+        # Get default collection without argument
+        default_coll = store.get_collection()
+        assert default_coll == mock_default_collection
+        assert default_coll == store._get_or_create_collection()  # Same as default
+
+
+def test_get_collection_invalid_input_raises_error():
+    """Test that get_collection raises ValueError for invalid names."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="default_collection",
+        )
+
+        # Test empty string raises ValueError
+        with pytest.raises(
+            ValueError, match="Collection name must be a non-empty string"
+        ):
+            store.get_collection("")
+
+        # Test non-string type raises ValueError
+        with pytest.raises(
+            ValueError, match="Collection name must be a non-empty string"
+        ):
+            store.get_collection(123)
+
+
+def test_add_documents_to_specific_collection():
+    """Test adding documents to a specific collection by name."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        # Mock collections
+        mock_default_collection = MagicMock()
+        mock_contracts_collection = MagicMock()
+
+        collections_called = []
+
+        def mock_get_or_create(name):
+            collections_called.append(name)
+            if name == "papers":
+                return mock_default_collection
+            elif name == "contracts":
+                return mock_contracts_collection
+            return MagicMock()
+
+        mock_instance.get_or_create_collection = mock_get_or_create
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="papers",
+        )
+
+        # Add to default collection (no collection_name specified)
+        store.add_documents(
+            documents=["doc1"], metadatas=[{"key": "value1"}], ids=["id1"]
+        )
+
+        # Add to contracts collection (specific collection)
+        store.add_documents(
+            documents=["doc2"],
+            metadatas=[{"key": "value2"}],
+            ids=["id2"],
+            collection_name="contracts",
+        )
+
+        # Verify both collections were accessed
+        assert "papers" in collections_called
+        assert "contracts" in collections_called
+
+        # Verify upsert was called on both collections
+        assert mock_default_collection.upsert.called
+        assert mock_contracts_collection.upsert.called
+
+
+def test_add_documents_backward_compatible():
+    """Test that existing add_documents usage (without collection_name) still works."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        mock_collection = MagicMock()
+        mock_instance.get_or_create_collection.return_value = mock_collection
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="papers",
+        )
+
+        # Call without collection_name parameter (existing usage)
+        store.add_documents(
+            documents=["doc1"], metadatas=[{"key": "value"}], ids=["id1"]
+        )
+
+        # Verify upsert was called
+        mock_collection.upsert.assert_called_once_with(
+            documents=["doc1"], metadatas=[{"key": "value"}], ids=["id1"]
+        )
+
+
+def test_count_specific_collection():
+    """Test counting documents in a specific collection."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        # Mock collections with different counts
+        mock_papers_collection = MagicMock()
+        mock_papers_collection.count.return_value = 100
+
+        mock_contracts_collection = MagicMock()
+        mock_contracts_collection.count.return_value = 50
+
+        def mock_get_or_create(name):
+            if name == "papers":
+                return mock_papers_collection
+            elif name == "contracts":
+                return mock_contracts_collection
+            return MagicMock()
+
+        mock_instance.get_or_create_collection = mock_get_or_create
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="papers",
+        )
+
+        # Count default collection
+        papers_count = store.count()
+        assert papers_count == 100
+
+        # Count specific collection
+        contracts_count = store.count(collection_name="contracts")
+        assert contracts_count == 50
+
+        # Verify count was called on correct collection
+        mock_contracts_collection.count.assert_called_once()
