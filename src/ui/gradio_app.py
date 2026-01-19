@@ -2,11 +2,13 @@
 
 import logging
 import re
+import threading
 import time
 
 import gradio as gr
 from dotenv import load_dotenv
 
+from ..config import settings
 from ..retrieval.cached_engine import CachedRAGEngine
 
 logger = logging.getLogger(__name__)
@@ -17,14 +19,18 @@ load_dotenv()
 # Initialize engine once at module load time (thread-safe singleton)
 logger.info("Initializing RAG engine...")
 _engine: CachedRAGEngine | None = None
+_engine_lock = threading.Lock()
 
 
 def _get_engine() -> CachedRAGEngine:
     """Get or create the RAG engine instance (thread-safe singleton)."""
     global _engine
     if _engine is None:
-        _engine = CachedRAGEngine()
-        logger.info("RAG engine initialized")
+        with _engine_lock:
+            # Double-check pattern to prevent race condition
+            if _engine is None:
+                _engine = CachedRAGEngine()
+                logger.info("RAG engine initialized")
     return _engine
 
 
@@ -88,7 +94,7 @@ def format_citations(citations: list[str]) -> str:
 
 def query_paper_stream(
     message: str,
-    history: list[tuple[str, str]],
+    history: list[dict[str, str]],  # Gradio 6.x dictionary format
     collection_choice: str,  # New parameter
 ):
     """Process a user query through the RAG pipeline with streaming.
@@ -142,9 +148,9 @@ def query_paper_stream(
         from ..retrieval.hybrid_search import HybridSearchRetriever
 
         retriever = HybridSearchRetriever(
-            chroma_api_key=engine.base_engine.retriever.client._api_key,
-            chroma_tenant=engine.base_engine.retriever.client._tenant,
-            chroma_database=engine.base_engine.retriever.client._database,
+            chroma_api_key=settings.chroma_cloud_api_key,
+            chroma_tenant=settings.chroma_tenant,
+            chroma_database=settings.chroma_database,
             collection_name=collection_name,
             top_k=engine.base_engine.top_k_retrieve,
         )
@@ -242,7 +248,7 @@ def create_interface() -> gr.Blocks:
     Returns:
         Gradio Blocks interface
     """
-    with gr.Blocks(theme=theme, title="RAG Research Assistant") as interface:
+    with gr.Blocks() as interface:
         # Collection selector at top
         gr.Markdown("# 📚 RAG Research Assistant")
         gr.Markdown(
@@ -285,18 +291,44 @@ def create_interface() -> gr.Blocks:
             label="Example Queries",
         )
 
-        # Event handlers
+        # Event handlers (Gradio 6.x dictionary format)
         def submit_message(message, history, collection):
             """Submit message and stream response."""
+            print(f"[DEBUG] submit_message: message={repr(message)}, history len={len(history)}", flush=True)
             if not message.strip():
                 return history, ""
-            history = history + [[message, None]]
+            # Append user message in Gradio 6.x format
+            history = history + [{"role": "user", "content": message}]
+            print(f"[DEBUG] submit_message returning: history len={len(history)}, last={history[-1]}", flush=True)
             return history, ""
 
-        def stream_response(message, history, collection):
-            """Stream the response."""
-            for response in query_paper_stream(message, history, collection):
-                history[-1][1] = response
+        def stream_response(history, collection):
+            """Stream the response in Gradio 6.x format."""
+            print(f"[DEBUG] stream_response: history len={len(history)}, collection={collection}", flush=True)
+            # Extract the actual user message from history (it's the last message)
+            if history and history[-1]["role"] == "user":
+                content = history[-1]["content"]
+                # In Gradio 6.x, content can be a list of content blocks or a plain string
+                if isinstance(content, list):
+                    # Extract text from content blocks
+                    actual_message = ""
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            actual_message += block["text"]
+                        elif isinstance(block, str):
+                            actual_message += block
+                else:
+                    actual_message = content
+            else:
+                actual_message = ""
+
+            print(f"[DEBUG] Extracted actual_message={repr(actual_message)} (len={len(actual_message)})", flush=True)
+
+            # Initialize empty assistant message
+            history.append({"role": "assistant", "content": ""})
+            # Now history[-2] is the user message, history[-1] is the new assistant message
+            for response_chunk in query_paper_stream(actual_message, history[:-1], collection):
+                history[-1]["content"] = response_chunk
                 yield history
 
         submit_btn.click(
@@ -305,7 +337,7 @@ def create_interface() -> gr.Blocks:
             outputs=[chatbot, msg],
         ).then(
             stream_response,
-            inputs=[msg, chatbot, collection_dropdown],
+            inputs=[chatbot, collection_dropdown],  # Don't pass msg (it's cleared)
             outputs=chatbot,
         )
 
@@ -315,12 +347,12 @@ def create_interface() -> gr.Blocks:
             outputs=[chatbot, msg],
         ).then(
             stream_response,
-            inputs=[msg, chatbot, collection_dropdown],
+            inputs=[chatbot, collection_dropdown],  # Don't pass msg (it's cleared)
             outputs=chatbot,
         )
 
         clear_btn.click(
-            lambda: ([], ""),
+            lambda: ([], ""),  # Empty list for messages format, empty string for input
             outputs=[chatbot, msg],
         )
 
@@ -340,6 +372,7 @@ def launch(
         server_port=server_port,
         share=share,
         show_error=True,
+        theme=theme,
     )
 
 
