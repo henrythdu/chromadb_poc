@@ -1,6 +1,7 @@
 """Format citations for different collection types."""
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ class CitationFormatter:
     - SEC contracts: document_id field present
     """
 
-    def format_citation(self, metadata: dict) -> str:
+    def format_citation(self, metadata: dict[str, Any]) -> str:
         """Format citation based on collection type detection.
 
         Args:
@@ -30,7 +31,7 @@ class CitationFormatter:
             logger.warning(f"Unknown metadata type: {list(metadata.keys())}")
             return f"Unknown source: {metadata}"
 
-    def _format_arxiv_paper(self, metadata: dict) -> str:
+    def _format_arxiv_paper(self, metadata: dict[str, Any]) -> str:
         """Format ArXiv paper citation with clickable link.
 
         Args:
@@ -41,14 +42,14 @@ class CitationFormatter:
         """
         title = metadata.get("title", "Unknown Title")
         authors = metadata.get("authors", "Unknown Authors")
-        arxiv_id = metadata.get("arxiv_id", "")
+        arxiv_id = metadata.get("arxiv_id") or ""
 
         citation_text = f"{title} - {authors} (arxiv:{arxiv_id})"
         url = f"https://arxiv.org/abs/{arxiv_id}"
 
         return f"[{citation_text}]({url})"
 
-    def _format_contract(self, metadata: dict) -> str:
+    def _format_contract(self, metadata: dict[str, Any]) -> str:
         """Format SEC contract citation with descriptive narrative.
 
         Args:

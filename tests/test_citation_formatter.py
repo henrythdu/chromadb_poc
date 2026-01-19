@@ -1,7 +1,5 @@
 """Tests for CitationFormatter."""
 
-import pytest
-
 from src.retrieval.citation_formatter import CitationFormatter
 
 
