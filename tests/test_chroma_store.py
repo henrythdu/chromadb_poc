@@ -348,11 +348,15 @@ def test_get_collection_invalid_input_raises_error():
         )
 
         # Test empty string raises ValueError
-        with pytest.raises(ValueError, match="Collection name must be a non-empty string"):
+        with pytest.raises(
+            ValueError, match="Collection name must be a non-empty string"
+        ):
             store.get_collection("")
 
         # Test non-string type raises ValueError
-        with pytest.raises(ValueError, match="Collection name must be a non-empty string"):
+        with pytest.raises(
+            ValueError, match="Collection name must be a non-empty string"
+        ):
             store.get_collection(123)
 
 
@@ -398,9 +402,7 @@ def test_add_documents_to_specific_collection():
 
         # Add to default collection (no collection_name specified)
         store.add_documents(
-            documents=["doc1"],
-            metadatas=[{"key": "value1"}],
-            ids=["id1"]
+            documents=["doc1"], metadatas=[{"key": "value1"}], ids=["id1"]
         )
 
         # Add to contracts collection (specific collection)
@@ -408,7 +410,7 @@ def test_add_documents_to_specific_collection():
             documents=["doc2"],
             metadatas=[{"key": "value2"}],
             ids=["id2"],
-            collection_name="contracts"
+            collection_name="contracts",
         )
 
         # Verify both collections were accessed
@@ -449,14 +451,62 @@ def test_add_documents_backward_compatible():
 
         # Call without collection_name parameter (existing usage)
         store.add_documents(
-            documents=["doc1"],
-            metadatas=[{"key": "value"}],
-            ids=["id1"]
+            documents=["doc1"], metadatas=[{"key": "value"}], ids=["id1"]
         )
 
         # Verify upsert was called
         mock_collection.upsert.assert_called_once_with(
-            documents=["doc1"],
-            metadatas=[{"key": "value"}],
-            ids=["id1"]
+            documents=["doc1"], metadatas=[{"key": "value"}], ids=["id1"]
         )
+
+
+def test_count_specific_collection():
+    """Test counting documents in a specific collection."""
+    try:
+        import chromadb
+    except ImportError:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+        return
+
+    from src.ingestion.chroma_store import ChromaStore
+
+    if chromadb is None:
+        pytest.skip("chromadb not installed - requires Python 3.12 or earlier")
+
+    with patch("src.ingestion.chroma_store.chromadb.CloudClient") as mock_client:
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+
+        # Mock collections with different counts
+        mock_papers_collection = MagicMock()
+        mock_papers_collection.count.return_value = 100
+
+        mock_contracts_collection = MagicMock()
+        mock_contracts_collection.count.return_value = 50
+
+        def mock_get_or_create(name):
+            if name == "papers":
+                return mock_papers_collection
+            elif name == "contracts":
+                return mock_contracts_collection
+            return MagicMock()
+
+        mock_instance.get_or_create_collection = mock_get_or_create
+
+        store = ChromaStore(
+            api_key="test_key",
+            tenant="test-tenant",
+            database="test_database",
+            collection_name="papers",
+        )
+
+        # Count default collection
+        papers_count = store.count()
+        assert papers_count == 100
+
+        # Count specific collection
+        contracts_count = store.count(collection_name="contracts")
+        assert contracts_count == 50
+
+        # Verify count was called on correct collection
+        mock_contracts_collection.count.assert_called_once()

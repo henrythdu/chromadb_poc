@@ -134,15 +134,25 @@ class ChromaStore:
         coll_name = collection_name if collection_name else self.collection_name
         logger.info(f"Upserted {len(documents)} documents to collection '{coll_name}'")
 
-    def count(self) -> int:
+    def count(self, collection_name: str | None = None) -> int:
         """Get the number of documents in the collection.
+
+        Args:
+            collection_name: Optional collection name to count. If None, uses the default
+                           collection specified during initialization.
 
         Returns:
             Number of documents in the collection
         """
-        collection = self._get_or_create_collection()
+        if collection_name is not None:
+            collection = self.get_collection(collection_name)
+        else:
+            collection = self._get_or_create_collection()
+
         count = collection.count()
-        logger.info(f"Collection {self.collection_name} has {count} documents")
+
+        coll_name = collection_name if collection_name else self.collection_name
+        logger.info(f"Collection '{coll_name}' has {count} documents")
         return count
 
     def test_connection(self) -> bool:
