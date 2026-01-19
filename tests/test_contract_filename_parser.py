@@ -8,8 +8,11 @@ import pytest
 from src.ingestion.contract_filename_parser import (
     ContractFilenameParser,
     ParseError,
+    is_valid_filing_type,
+    normalize_company_name,
     parse_contract_filename,
     parse_contract_path,
+    validate_metadata,
 )
 
 # Add src to path
@@ -185,3 +188,49 @@ def test_parser_class_get_statistics():
     assert stats["total"] == 3
     assert stats["successful"] == 2
     assert stats["failed"] == 1
+
+
+def test_validate_metadata_with_all_fields():
+    """Test validation passes with complete metadata."""
+    metadata = {
+        "company_name": "TestCompany",
+        "execution_date": "2020-01-01",
+        "filing_type": "10-K",
+        "exhibit_number": "EX-10.1",
+        "accession_number": "12345",
+        "contract_type": "License_Agreements",
+        "filename": "Test.pdf",
+        "document_id": "abc123",
+    }
+
+    # Should not raise
+    validate_metadata(metadata)
+
+
+def test_validate_metadata_missing_required_field():
+    """Test validation fails with missing required field."""
+    metadata = {
+        "company_name": "TestCompany",
+        # Missing execution_date
+        "filing_type": "10-K",
+        "exhibit_number": "EX-10.1",
+        "accession_number": "12345",
+    }
+
+    with pytest.raises(ValueError):
+        validate_metadata(metadata)
+
+
+def test_normalize_company_name():
+    """Test company name normalization."""
+    assert normalize_company_name("Test-Company_Inc.") == "Test Company Inc"
+    assert normalize_company_name("ABC_Corp") == "ABC Corp"
+    assert normalize_company_name("Multiple   Spaces") == "Multiple Spaces"
+
+
+def test_is_valid_filing_type():
+    """Test filing type validation."""
+    assert is_valid_filing_type("10-K") is True
+    assert is_valid_filing_type("S-1") is True
+    assert is_valid_filing_type("8-K") is True
+    assert is_valid_filing_type("INVALID") is False

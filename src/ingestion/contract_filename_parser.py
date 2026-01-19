@@ -27,6 +27,9 @@ __all__ = [
     "parse_contract_path",
     "ParseError",
     "ContractFilenameParser",
+    "validate_metadata",
+    "normalize_company_name",
+    "is_valid_filing_type",
 ]
 
 
@@ -34,6 +37,105 @@ class ParseError(Exception):
     """Raised when filename parsing fails."""
 
     pass
+
+
+# Valid SEC filing types
+_VALID_FILING_TYPES = {
+    "S-1",
+    "S-1/A",
+    "S-3",
+    "S-3/A",
+    "S-4",
+    "S-8",
+    "10-K",
+    "10-K/A",
+    "10-Q",
+    "10-Q/A",
+    "8-K",
+    "8-K/A",
+    "20-F",
+    "20-F/A",
+    "40-F",
+    "6-K",
+    "11-K",
+    "11-K/A",
+    "SB-2",
+    "SB-2/A",
+    "SB-3",
+    "SB-3/A",
+    "DEF 14A",
+    "DEF 14A/A",
+    "424B2",
+    "424B3",
+    "424B5",
+    "424B7",
+    "497K",
+    "497A",
+}
+
+
+def validate_metadata(metadata: dict) -> None:
+    """Validate that metadata contains all required fields.
+
+    Args:
+        metadata: Metadata dictionary to validate
+
+    Raises:
+        ValueError: If required fields are missing or invalid
+    """
+    required_fields = {
+        "company_name",
+        "execution_date",
+        "filing_type",
+        "exhibit_number",
+        "accession_number",
+    }
+
+    missing = required_fields - metadata.keys()
+    if missing:
+        raise ValueError(f"Missing required fields: {missing}")
+
+    # Validate date format
+    try:
+        datetime.strptime(metadata["execution_date"], "%Y-%m-%d")
+    except ValueError as e:
+        raise ValueError(f"Invalid execution_date format: {metadata['execution_date']}") from e
+
+
+def normalize_company_name(name: str) -> str:
+    """Normalize company name by replacing underscores/hyphens with spaces.
+
+    Args:
+        name: Raw company name from filename
+
+    Returns:
+        Normalized company name
+
+    Example:
+        >>> normalize_company_name("Test-Company_Inc.")
+        "Test Company Inc"
+    """
+    # Replace underscores and hyphens with spaces
+    normalized = name.replace("_", " ").replace("-", " ")
+    # Remove trailing dots (like "Inc." -> "Inc")
+    normalized = normalized.rstrip(".")
+    # Collapse multiple spaces
+    normalized = " ".join(normalized.split())
+    return normalized
+
+
+def is_valid_filing_type(filing_type: str) -> bool:
+    """Check if filing type is a valid SEC filing type.
+
+    Args:
+        filing_type: Filing type string
+
+    Returns:
+        True if filing type is recognized, False otherwise
+    """
+    # Normalize (remove /A suffix for amendments)
+    base_type = filing_type.split("/")[0]
+    return base_type in _VALID_FILING_TYPES
 
 
 def parse_contract_filename(filename: str) -> dict:
